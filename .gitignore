@@ -1,0 +1,9 @@
+public
+node_modules
+*.crt
+*.csr
+*.ext
+*.key
+release
+tmp
+logs
