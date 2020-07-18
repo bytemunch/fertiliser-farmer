@@ -22,9 +22,6 @@ body {
 }
 
 #content {
-    width: 480px;
-    height: 360px;
-    padding: 3px;
-    border: 2px dotted var(--theme-color);
-    margin: 25px auto auto auto;
+    width: 100vw;
+    height: 100vh;
 }

@@ -55,9 +55,17 @@ gulp.task('build', ()=>{
    .pipe(ts({target:'es2020'}))
    .pipe(gulp.dest('./public'))
 
+   var lib = gulp.src('./src/lib/*.js')
+   .pipe(gulp.dest('./public/lib'));
+
+   var version = gulp.src('./src/version')
+   .pipe(gulp.dest('./public/'));
+
    var allStreams = merge(mainTs, htmlFiles);
    allStreams.add(images)
    allStreams.add(sw)
+   allStreams.add(lib)
+   allStreams.add(version)
 
    return allStreams;
 })

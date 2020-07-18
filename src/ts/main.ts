@@ -1,11 +1,26 @@
+import { makeNoise3D } from '../lib/osn.js';
+
 let DEBUG = {
     boundingBoxes: false,
 }
+
+let version;
+
+(async () => {
+    version = await (await fetch('./version')).text();
+})();
 
 let cnv = document.createElement('canvas');
 cnv.style.imageRendering = 'pixelated';
 let ctx = cnv.getContext('2d');
 ctx.imageSmoothingEnabled = false;
+
+window.addEventListener('resize', () => {
+    cnv.height = window.innerHeight;
+    cnv.width = window.innerWidth;
+
+    camera.resized();
+})
 
 let contentDiv: HTMLDivElement;
 
@@ -17,6 +32,16 @@ let worldHeight = worldWidth * 2;
 
 let viewScale = 1.5;
 
+let itemManifest = {
+    'shit': {
+        maxLevel: 5,
+        dropTable: {
+            coin: [3, 5],
+            shit: [1, 3]
+        }
+    }
+}
+
 class Sprite {
     cnv = document.createElement('canvas');
 
@@ -24,9 +49,13 @@ class Sprite {
     sheetWidth: number;
     ready: Promise<any>;
 
+    spriteWidth: number
+
     constructor(src, w = 32, h = 32) {
         this.cnv.style.imageRendering = 'pixelated';
         this.ctx.imageSmoothingEnabled = false;
+
+        this.spriteWidth = w;
 
         let img = new Image();
 
@@ -47,7 +76,7 @@ class Sprite {
     }
 
     drawSprite(img) {
-        if (this.sheetWidth > 32) {
+        if (this.sheetWidth > this.spriteWidth) {
             let x = 0;
             // initial draw
             this.ctx.drawImage(img, 0, 0, this.cnv.width, this.cnv.height, 0, 0, this.cnv.width, this.cnv.height);
@@ -64,8 +93,6 @@ class Sprite {
             // no animation
             this.ctx.drawImage(img, 0, 0, this.cnv.width, this.cnv.height, 0, 0, this.cnv.width, this.cnv.height);
         }
-
-
     }
 }
 
@@ -74,12 +101,14 @@ interface IActorOptions {
     sprite: Sprite,
     layer: number,
     droppable?: boolean,
-    draggable?: boolean
+    draggable?: boolean,
+    type: string,
+    level?: number
 }
 
 abstract class WorldActor {
-    _x: number;
-    _y: number;
+    _x: number | false;
+    _y: number | false;
 
     gridX: number;
     gridY: number;
@@ -91,11 +120,17 @@ abstract class WorldActor {
     width: number;
     height: number;
 
+    type;
+
 
     constructor(opts: IActorOptions) {
+        this._x = false;
+        this._y = false;
+
         this.gridX = opts.gridPosition.gridX;
         this.gridY = opts.gridPosition.gridY;
 
+        this.type = opts.type;
 
         this.layer = opts.layer;
 
@@ -115,19 +150,29 @@ abstract class WorldActor {
     }
 
     get x() {
-        if (!this._x) this._x = (this.gridX * 32 + this.xOffset) * viewScale;
+        if (this._x === false) this._x = (this.gridX * 32 + this.xOffset) * viewScale;
         return this._x;
     }
 
     get y() {
-        if (!this._y) this._y = (this.gridY * 8 + this.yOffset) * viewScale;
+        if (this._y === false) this._y = (this.gridY * 8 + this.yOffset) * viewScale;
         return this._y;
     }
 
     draw(ctx: CanvasRenderingContext2D, camera: Camera) {
-        if (camera.inView(this)) ctx.drawImage(this.img, this.x - camera.x, this.y - camera.y, this.img.width * viewScale, this.img.height * viewScale);
+        if (this.inView(camera)) {
+            ctx.drawImage(this.img, this.x - camera.x, this.y - camera.y, this.img.width * viewScale, this.img.height * viewScale);
+            return true;
+        }
+
+        return false;
 
         //if (DEBUG.boundingBoxes) ctx.strokeRect(this.x - camera.x, this.y - camera.y, this.width*viewScale, this.height*viewScale);
+    }
+
+    inView(camera: Camera) {
+        return (this.x + camera.xOffset > camera.x && this.x < camera.x + camera.viewWidth
+            && this.y + camera.yOffset > camera.y && this.y < camera.y + camera.viewHeight);
     }
 
     collides(x, y) {
@@ -147,10 +192,14 @@ class Tile extends WorldActor {
         this.height = 16;
     }
 
+    get contents() {
+        return tileGrid[this.gridX][this.gridY].contents;
+    }
+
     draw(ctx, cam) {
-        super.draw(ctx, cam);
         ctx.fillStyle = '#ff000088';
-        if (this.draggedOver) ctx.fillRect(this.x - cam.x + (this.width/3)*viewScale, this.y - cam.y - (this.height / 3) * viewScale, this.width * 1/3 * viewScale, this.height * viewScale);
+        if (this.draggedOver) ctx.fillRect(this.x - cam.x + (this.width / 3) * viewScale, this.y - cam.y - (this.height / 3) * viewScale, this.width * 1 / 3 * viewScale, this.height * viewScale);
+        return super.draw(ctx, cam);
     }
 
     collides(x, y) {
@@ -159,11 +208,13 @@ class Tile extends WorldActor {
 }
 
 class Item extends WorldActor {
-    draggable = true;
+    level: number;
     constructor(options: IActorOptions) {
         super(options)
         this.width = 16;
         this.height = 16;
+
+        this.level = options.level || 1;
     }
 
     get xOffset() {
@@ -174,28 +225,129 @@ class Item extends WorldActor {
         return -this.height / 2;
     }
 
-    draw(ctx, cam) {
-        super.draw(ctx, cam);
-
-        if (DEBUG.boundingBoxes) {
-            ctx.strokeStyle = 'red';
-            ctx.strokeRect(this.x - cam.x, this.y - cam.y, this.width * viewScale, this.height * viewScale);
-        }
+    get draggable() {
+        return (tileGrid[this.gridX][this.gridY].tile.type == 'grass');
     }
-}
 
-interface IActor {
-    x: number,
-    y: number,
-    width: number,
-    height: number
+    draw(ctx, cam) {
+        if (tileGrid[this.gridX][this.gridY].tile.type == 'grass') return super.draw(ctx, cam);
+        return false;
+    }
+
+    getConnectedItemsOfSameTypeAndLevel() {
+        let connected = [];
+        if (this.gridY % 2) {
+            connected.push(tileGrid[this.gridX - 1][this.gridY - 1].contents,
+                tileGrid[this.gridX + 0][this.gridY - 1].contents,
+                tileGrid[this.gridX + 0][this.gridY + 1].contents,
+                tileGrid[this.gridX - 1][this.gridY + 1].contents)
+        } else {
+            connected.push(tileGrid[this.gridX - 0][this.gridY - 1].contents,
+                tileGrid[this.gridX + 1][this.gridY - 1].contents,
+                tileGrid[this.gridX + 1][this.gridY + 1].contents,
+                tileGrid[this.gridX - 0][this.gridY + 1].contents)
+        }
+
+        return connected.filter(item => item && item.type == this.type && item.level == this.level);
+    }
+
+    complete() {
+        console.log('ding');
+        // Use drop table here
+    }
+
+    merge(merger) {
+
+        // check around self for other items of same type
+        // build list of connected items of same type
+        let connectedItems: Set<Item> = new Set;
+
+        let newLevel = this.level + 1;
+
+        connectedItems.add(merger);
+
+        this.getConnectedItemsOfSameTypeAndLevel().forEach(item => connectedItems.add(item));
+
+        let depth = 10;
+
+        for (let i = 0; i < depth; i++) {
+            for (let item of connectedItems) {
+                // then check around that item
+                item.getConnectedItemsOfSameTypeAndLevel().forEach(item => connectedItems.add(item));
+            }
+        }
+        connectedItems.add(this);
+
+
+        if (connectedItems.size < 3) return false;
+
+        let numUpgraded = 0;
+        let used = 0;
+
+
+        // group list into 5s
+        // merge each group of 5 until list size < 5
+        // for each 5 create two levelled up versions
+        // remove merged
+        if (connectedItems.size >= 5) {
+            numUpgraded = Math.floor(connectedItems.size / 5) * 2;
+            used = Math.floor(connectedItems.size - connectedItems.size % 5);
+        }
+
+        // group into 3s
+        // merge 3s
+        // for each 3 create one levelled up version
+        // remove merged 3s
+        if (connectedItems.size % 5 >= 3) {
+            numUpgraded++;
+            used += 3;
+        }
+
+        let leftover = connectedItems.size - used;
+        console.log('upgraded:', numUpgraded)
+        console.log('leftover:', leftover)
+        // done
+
+        let i = 0;
+        console.log(connectedItems);
+        for (let item of connectedItems) {
+            tileGrid[item.gridX][item.gridY].contents = null;
+            if (i < numUpgraded) {
+                if (newLevel > itemManifest[item.type].maxLevel) {
+                    item.complete();
+                } else {
+                    tileGrid[item.gridX][item.gridY].contents = new Item({
+                        gridPosition: { gridX: item.gridX, gridY: item.gridY },
+                        layer: item.layer,
+                        sprite: sprites[`${item.type}-${newLevel}`],
+                        type: item.type,
+                        level: newLevel
+                    })
+                }
+            } else if (i < numUpgraded + leftover) {
+                tileGrid[item.gridX][item.gridY].contents = new Item({
+                    gridPosition: { gridX: item.gridX, gridY: item.gridY },
+                    layer: item.layer,
+                    sprite: sprites[`${item.type}-${item.level}`],
+                    type: item.type,
+                    level: item.level
+                })
+            }
+
+            i++
+        }
+
+        console.log(connectedItems);
+
+        return true;
+    }
 }
 
 class Camera {
     x: number = 0;
     y: number = 0;
-    viewWidth: number = 470;
-    viewHeight: number = 350;
+    viewWidth: number;
+    viewHeight: number;
 
     hBounds: number;
     vBounds: number;
@@ -204,6 +356,10 @@ class Camera {
     yOffset = 48 * viewScale;
 
     constructor() {
+        this.resized();
+    }
+
+    resized() {
         this.viewWidth = cnv.width + this.xOffset;
         this.viewHeight = cnv.height + this.yOffset;
 
@@ -231,18 +387,17 @@ class Camera {
         }
     }
 
-    inView(actor: IActor) {
-        return (actor.x + this.xOffset > this.x && actor.x < this.x + this.viewWidth
-            && actor.y + this.yOffset > this.y && actor.y < this.y + this.viewHeight);
-    }
+    // inView(actor: WorldActor) {
+    //     return (actor.x + this.xOffset > this.x && actor.x < this.x + this.viewWidth
+    //         && actor.y + this.yOffset > this.y && actor.y < this.y + this.viewHeight);
+    // }
 }
 
-let camera;
+let camera: Camera;
 
 let sprites: { [x: string]: Sprite } = {};
 
 interface IGridTile {
-    type: string,
     tile: Tile,
     contents: any
 }
@@ -263,8 +418,13 @@ const loadSprites = () => {
     sprites.water = new Sprite('./img/tiles/water.png', 32, 16);
     loadPromises.push(sprites.water.ready);
 
-    sprites.shit = new Sprite('./img/items/shit.png');
-    loadPromises.push(sprites.shit.ready);
+    sprites.fog = new Sprite('./img/tiles/fog.png', 32, 48);
+    loadPromises.push(sprites.fog.ready);
+
+    for (let i = 1; i <= 5; i++) {
+        sprites[`shit-${i}`] = new Sprite(`./img/items/shit-${i}.png`);
+        loadPromises.push(sprites[`shit-${i}`].ready);
+    }
 
     return Promise.allSettled(loadPromises);
 }
@@ -300,12 +460,12 @@ const loaded = async () => {
         tileGrid[i] = [];
         for (let j = 0; j < worldHeight; j++) {
             tileGrid[i][j] = {
-                type: 'water',
-                contents: '',
+                contents: null,
                 tile: new Tile({
                     gridPosition: { gridX: i, gridY: j },
                     layer: 0,
-                    sprite: sprites.water
+                    sprite: sprites.water,
+                    type: 'water'
                 })
             }
         }
@@ -313,23 +473,50 @@ const loaded = async () => {
 
     let waterBorder = 1;
 
+    let seed = Math.floor(Math.random() * 1234567);
+
+    console.log(seed);
+
+    const noiseGen = makeNoise3D(seed);
+
     for (let i = waterBorder; i < worldWidth - waterBorder; i++) {
         for (let j = waterBorder * 2; j < worldHeight - waterBorder * 4; j++) {
             let layer = 1;
 
-            if (Math.random() < 0.1) tileGrid[i][j] = {
-                type: 'grass',
-                tile: new Tile({
-                    gridPosition: { gridX: i, gridY: j },
-                    layer,
-                    sprite: sprites.grass,
-                    droppable: true
-                }),
-                contents: Math.random() > 0 ? new Item({
-                    gridPosition: { gridX: i, gridY: j },
-                    layer: layer + 10,
-                    sprite: sprites.shit
-                }) : null,
+            const noiseScale = 20;
+
+            let itemSize = Math.floor(1 + Math.random() * 5);
+
+            if (noiseGen(i / noiseScale, j / noiseScale, 100) > 0) {
+                let tile;
+
+                if (i < worldWidth / 2 && j < worldHeight / 2) {
+                    tile = new Tile({
+                        gridPosition: { gridX: i, gridY: j },
+                        layer,
+                        sprite: sprites.grass,
+                        droppable: true,
+                        type: 'grass',
+                    })
+                } else {
+                    tile = new Tile({
+                        gridPosition: { gridX: i, gridY: j },
+                        layer,
+                        sprite: sprites.fog,
+                        droppable: false,
+                        type: 'fog',
+                    })
+                }
+                tileGrid[i][j] = {
+                    tile,
+                    contents: Math.random() < 0.1 ? new Item({
+                        gridPosition: { gridX: i, gridY: j },
+                        layer: layer + 10,
+                        sprite: sprites[`shit-${itemSize}`],
+                        type: `shit`,
+                        level: itemSize
+                    }) : null,
+                }
             }
         }
     }
@@ -340,7 +527,7 @@ const loaded = async () => {
 const flattenArray = array2D => {
     let flatArray = [];
 
-    array2D.forEach(row => row.filter(gridSq => camera.inView(gridSq.tile)).forEach(gridSq => {
+    array2D.forEach(row => row.forEach(gridSq => {
         flatArray.push(gridSq.tile);
         if (gridSq.contents) flatArray.push(gridSq.contents)
     }));
@@ -377,8 +564,8 @@ const rAFLoop = (t: DOMHighResTimeStamp) => {
 
     avgFps = avg(prevFPSs);
 
-
-    ctx.clearRect(0, 0, cnv.width, cnv.height);
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, cnv.width, cnv.height);
 
     let flatArray = flattenArray(tileGrid);
 
@@ -394,9 +581,13 @@ const rAFLoop = (t: DOMHighResTimeStamp) => {
 
     handleInput();
 
+    //DEBUG
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(0, cnv.height - 20, cnv.width, 20);
     ctx.fillStyle = 'white';
     ctx.font = '16px monospace';
-    ctx.fillText(avgFps.toFixed(2), 10, 20);
+    ctx.fillText('FPS: ' + avgFps.toFixed(2), 10, cnv.height - 4);
+    ctx.fillText('rev' + version, cnv.width - 60, cnv.height - 4);
 
     ctx.resetTransform();
 
@@ -429,27 +620,28 @@ const handleInput = () => {
     }
 }
 
-cnv.addEventListener('touchstart', e => {
-    let targetBB = (<HTMLElement>e.target).getBoundingClientRect();
-    let startX = e.touches[0].pageX - targetBB.x + camera.x;
-    let startY = e.touches[0].pageY - targetBB.y + camera.y;
-
-    let x = startX;
-    let y = startY;
-
+const itemTouchListeners = (x, y, targetBB) => {
     for (let actor of flattenArray(tileGrid)) {
-        actor = actor as Item;
-        if (!actor.draggable) continue;
+        actor = actor as WorldActor;
 
-        if (actor.collides(x, y)) {
+        if (actor.draggable && actor.collides(x, y)) {
+            // item dragging listeners
             let dragged: Item = actor;
 
             x -= (dragged.width / 2) * viewScale;
             y -= (dragged.height / 2) * viewScale;
 
             const moveHandler = e => {
+                e.preventDefault();
+
                 x = e.touches[0].pageX - targetBB.x + camera.x;
                 y = e.touches[0].pageY - targetBB.y + camera.y;
+
+                if (x > cnv.width * 0.9 + camera.x) camera.move(5, 0);
+                if (x < cnv.width * 0.1 + camera.x) camera.move(-5, 0);
+                if (y > cnv.height * 0.9 + camera.y) camera.move(0, 5);
+                if (y < cnv.height * 0.1 + camera.y) camera.move(0, -5);
+
 
                 dragged._x = x - (dragged.width / 2) * viewScale;
                 dragged._y = y - (dragged.height / 2) * viewScale;
@@ -467,7 +659,7 @@ cnv.addEventListener('touchstart', e => {
             };
 
             const endHandler = e => {
-                let dropped = false;
+                e.preventDefault();
 
                 for (let tile of flattenArray(tileGrid)) {
                     tile = tile as Tile;
@@ -476,16 +668,33 @@ cnv.addEventListener('touchstart', e => {
                     tile.draggedOver = false;
 
                     if (tile.collides(x, y)) {
-                        dropped = tile;
-                        // set dragged position to dropped grid
-                        dragged.gridX = tile.gridX;
-                        dragged.gridY = tile.gridY;
+                        if (tile.contents && tile.contents.type !== dragged.type) continue;
+
+                        const moveItem = () => {
+                            tileGrid[tile.gridX][tile.gridY].contents = dragged;
+                            tileGrid[dragged.gridX][dragged.gridY].contents = null;
+
+                            // set dragged position to dropped grid
+                            dragged.gridX = tile.gridX;
+                            dragged.gridY = tile.gridY;
+                        }
+
+                        if (tile.contents && tile.contents.type == dragged.type) {
+                            if (dragged.merge(tile.contents)) {
+                                console.log('good merge');
+                                // moveItem();
+                            } else {
+                                console.log('bad merge');
+                            }
+                        } else {
+                            moveItem();
+                        }
                         break;
                     }
                 }
 
-                dragged._x = 0;
-                dragged._y = 0;
+                dragged._x = false;
+                dragged._y = false;
 
                 cnv.removeEventListener('touchmove', moveHandler);
                 cnv.removeEventListener('touchend', endHandler);
@@ -494,7 +703,53 @@ cnv.addEventListener('touchstart', e => {
             cnv.addEventListener('touchmove', moveHandler);
             cnv.addEventListener('touchend', endHandler);
 
-            break;
+            return true;
         }
+    }
+
+    return false;
+}
+
+let cameraTouchListeners = (x, y, targetBB, startX, startY) => {
+    // camera move listeners
+    const cameraMoveHandler = e => {
+        e.preventDefault();
+
+        x = e.touches[0].pageX - targetBB.x + camera.x;
+        y = e.touches[0].pageY - targetBB.y + camera.y;
+
+        camera.move(startX - x, startY - y);
+
+    }
+
+    const cameraEndHandler = e => {
+        e.preventDefault();
+
+        cnv.removeEventListener('touchmove', cameraMoveHandler);
+        cnv.removeEventListener('touchend', cameraEndHandler);
+    }
+
+    cnv.addEventListener('touchmove', cameraMoveHandler);
+    cnv.addEventListener('touchend', cameraEndHandler);
+}
+
+cnv.addEventListener('touchstart', e => {
+    e.preventDefault();
+
+    let targetBB = (<HTMLElement>e.target).getBoundingClientRect();
+    let startX = e.touches[0].pageX - targetBB.x + camera.x;
+    let startY = e.touches[0].pageY - targetBB.y + camera.y;
+
+    let x = startX;
+    let y = startY;
+
+    if (itemTouchListeners(x, y, targetBB)) return;
+
+    let interactableObjectPressed = false;
+
+    // TODO Loop through array again looking for interactable objects (sorted by layer)
+
+    if (!interactableObjectPressed) {
+        cameraTouchListeners(x, y, targetBB, startX, startY);
     }
 })

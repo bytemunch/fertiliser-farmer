@@ -6,7 +6,7 @@
     "background_color": "#3d3d3d",
     "theme_color": "#5a0fc8",
     "description": "PWA application skeleton",
-    "orientation": "portrait-primary",
+    "orientation": "landscape-primary",
     "icons": [
         {
             "src": "img/pwa/pwalogo@48.png",
