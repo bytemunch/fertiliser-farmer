@@ -1,4 +1,9 @@
 import { makeNoise3D } from '../lib/osn.js';
+import { Sprite } from './class/Sprite.js';
+import { WorldActor } from './class/WorldActor.js';
+import { Tile } from './class/Tile.js';
+import { Item } from './class/Item.js';
+import { Camera } from './class/Camera.js';
 
 let DEBUG = {
     boundingBoxes: false,
@@ -10,7 +15,7 @@ let version;
     version = await (await fetch('./version')).text();
 })();
 
-let cnv = document.createElement('canvas');
+export let cnv = document.createElement('canvas');
 cnv.style.imageRendering = 'pixelated';
 let ctx = cnv.getContext('2d');
 ctx.imageSmoothingEnabled = false;
@@ -26,13 +31,13 @@ let contentDiv: HTMLDivElement;
 
 let loop = false;
 
-let worldWidth = 50;
+export let worldWidth = 50;
 
-let worldHeight = worldWidth * 2;
+export let worldHeight = worldWidth * 2;
 
-let viewScale = 1.5;
+export let viewScale = 1.5;
 
-let itemManifest = {
+export let itemManifest = {
     'shit': {
         maxLevel: 5,
         dropTable: {
@@ -42,61 +47,7 @@ let itemManifest = {
     }
 }
 
-class Sprite {
-    cnv = document.createElement('canvas');
-
-    ctx = this.cnv.getContext('2d');
-    sheetWidth: number;
-    ready: Promise<any>;
-
-    spriteWidth: number
-
-    constructor(src, w = 32, h = 32) {
-        this.cnv.style.imageRendering = 'pixelated';
-        this.ctx.imageSmoothingEnabled = false;
-
-        this.spriteWidth = w;
-
-        let img = new Image();
-
-        this.ready = new Promise(res => {
-            img.addEventListener('load', () => {
-
-                this.cnv.width = w;
-                this.cnv.height = h;
-
-                this.sheetWidth = img.width;
-
-                this.drawSprite(img);
-                res()
-            });
-        })
-
-        img.src = src;
-    }
-
-    drawSprite(img) {
-        if (this.sheetWidth > this.spriteWidth) {
-            let x = 0;
-            // initial draw
-            this.ctx.drawImage(img, 0, 0, this.cnv.width, this.cnv.height, 0, 0, this.cnv.width, this.cnv.height);
-
-            // animate
-            setInterval(() => {
-                this.ctx.clearRect(0, 0, this.cnv.width, this.cnv.height);
-                this.ctx.drawImage(img, x, 0, this.cnv.width, this.cnv.height, 0, 0, this.cnv.width, this.cnv.height);
-                x += 32;
-                if (x >= this.sheetWidth) x = 0;
-            }, 666);
-        } else {
-
-            // no animation
-            this.ctx.drawImage(img, 0, 0, this.cnv.width, this.cnv.height, 0, 0, this.cnv.width, this.cnv.height);
-        }
-    }
-}
-
-interface IActorOptions {
+export interface IActorOptions {
     gridPosition: { gridX: number, gridY: number },
     sprite: Sprite,
     layer: number,
@@ -106,303 +57,16 @@ interface IActorOptions {
     level?: number
 }
 
-abstract class WorldActor {
-    _x: number | false;
-    _y: number | false;
-
-    gridX: number;
-    gridY: number;
-
-    sprite: Sprite;
-
-    layer: number;
-
-    width: number;
-    height: number;
-
-    type;
-
-
-    constructor(opts: IActorOptions) {
-        this._x = false;
-        this._y = false;
-
-        this.gridX = opts.gridPosition.gridX;
-        this.gridY = opts.gridPosition.gridY;
-
-        this.type = opts.type;
-
-        this.layer = opts.layer;
-
-        this.sprite = opts.sprite;
-    }
-
-    get img() {
-        return this.sprite.cnv;
-    }
-
-    get xOffset(): number {
-        return this.gridY % 2 ? 0 : 16;
-    }
-
-    get yOffset(): number {
-        return 0;
-    }
-
-    get x() {
-        if (this._x === false) this._x = (this.gridX * 32 + this.xOffset) * viewScale;
-        return this._x;
-    }
-
-    get y() {
-        if (this._y === false) this._y = (this.gridY * 8 + this.yOffset) * viewScale;
-        return this._y;
-    }
-
-    draw(ctx: CanvasRenderingContext2D, camera: Camera) {
-        if (this.inView(camera)) {
-            ctx.drawImage(this.img, this.x - camera.x, this.y - camera.y, this.img.width * viewScale, this.img.height * viewScale);
-            return true;
-        }
-
-        return false;
-
-        //if (DEBUG.boundingBoxes) ctx.strokeRect(this.x - camera.x, this.y - camera.y, this.width*viewScale, this.height*viewScale);
-    }
-
-    inView(camera: Camera) {
-        return (this.x + camera.xOffset > camera.x && this.x < camera.x + camera.viewWidth
-            && this.y + camera.yOffset > camera.y && this.y < camera.y + camera.viewHeight);
-    }
-
-    collides(x, y) {
-        return (x > this.x && y > this.y && x < this.x + this.width * viewScale && y < this.y + this.height * viewScale);
-    }
-}
-
-class Tile extends WorldActor {
-    droppable = false;
-    draggedOver = false;
-    constructor(opts: IActorOptions) {
-        super(opts);
-
-        this.droppable = opts.droppable;
-
-        this.width = 32;
-        this.height = 16;
-    }
-
-    get contents() {
-        return tileGrid[this.gridX][this.gridY].contents;
-    }
-
-    draw(ctx, cam) {
-        ctx.fillStyle = '#ff000088';
-        if (this.draggedOver) ctx.fillRect(this.x - cam.x + (this.width / 3) * viewScale, this.y - cam.y - (this.height / 3) * viewScale, this.width * 1 / 3 * viewScale, this.height * viewScale);
-        return super.draw(ctx, cam);
-    }
-
-    collides(x, y) {
-        return (x > this.x + this.width / 3 && y > this.y - this.height / 3 && x < this.x + (this.width * (2 / 3)) * viewScale && y < this.y + (this.height - this.height / 3) * viewScale);
-    }
-}
-
-class Item extends WorldActor {
-    level: number;
-    constructor(options: IActorOptions) {
-        super(options)
-        this.width = 16;
-        this.height = 16;
-
-        this.level = options.level || 1;
-    }
-
-    get xOffset() {
-        return this.width / 2 + (this.gridY % 2 == 0 ? this.width : 0);
-    }
-
-    get yOffset() {
-        return -this.height / 2;
-    }
-
-    get draggable() {
-        return (tileGrid[this.gridX][this.gridY].tile.type == 'grass');
-    }
-
-    draw(ctx, cam) {
-        if (tileGrid[this.gridX][this.gridY].tile.type == 'grass') return super.draw(ctx, cam);
-        return false;
-    }
-
-    getConnectedItemsOfSameTypeAndLevel() {
-        let connected = [];
-        if (this.gridY % 2) {
-            connected.push(tileGrid[this.gridX - 1][this.gridY - 1].contents,
-                tileGrid[this.gridX + 0][this.gridY - 1].contents,
-                tileGrid[this.gridX + 0][this.gridY + 1].contents,
-                tileGrid[this.gridX - 1][this.gridY + 1].contents)
-        } else {
-            connected.push(tileGrid[this.gridX - 0][this.gridY - 1].contents,
-                tileGrid[this.gridX + 1][this.gridY - 1].contents,
-                tileGrid[this.gridX + 1][this.gridY + 1].contents,
-                tileGrid[this.gridX - 0][this.gridY + 1].contents)
-        }
-
-        return connected.filter(item => item && item.type == this.type && item.level == this.level);
-    }
-
-    complete() {
-        console.log('ding');
-        // Use drop table here
-    }
-
-    merge(merger) {
-
-        // check around self for other items of same type
-        // build list of connected items of same type
-        let connectedItems: Set<Item> = new Set;
-
-        let newLevel = this.level + 1;
-
-        connectedItems.add(merger);
-
-        this.getConnectedItemsOfSameTypeAndLevel().forEach(item => connectedItems.add(item));
-
-        let depth = 10;
-
-        for (let i = 0; i < depth; i++) {
-            for (let item of connectedItems) {
-                // then check around that item
-                item.getConnectedItemsOfSameTypeAndLevel().forEach(item => connectedItems.add(item));
-            }
-        }
-        connectedItems.add(this);
-
-
-        if (connectedItems.size < 3) return false;
-
-        let numUpgraded = 0;
-        let used = 0;
-
-
-        // group list into 5s
-        // merge each group of 5 until list size < 5
-        // for each 5 create two levelled up versions
-        // remove merged
-        if (connectedItems.size >= 5) {
-            numUpgraded = Math.floor(connectedItems.size / 5) * 2;
-            used = Math.floor(connectedItems.size - connectedItems.size % 5);
-        }
-
-        // group into 3s
-        // merge 3s
-        // for each 3 create one levelled up version
-        // remove merged 3s
-        if (connectedItems.size % 5 >= 3) {
-            numUpgraded++;
-            used += 3;
-        }
-
-        let leftover = connectedItems.size - used;
-        console.log('upgraded:', numUpgraded)
-        console.log('leftover:', leftover)
-        // done
-
-        let i = 0;
-        console.log(connectedItems);
-        for (let item of connectedItems) {
-            tileGrid[item.gridX][item.gridY].contents = null;
-            if (i < numUpgraded) {
-                if (newLevel > itemManifest[item.type].maxLevel) {
-                    item.complete();
-                } else {
-                    tileGrid[item.gridX][item.gridY].contents = new Item({
-                        gridPosition: { gridX: item.gridX, gridY: item.gridY },
-                        layer: item.layer,
-                        sprite: sprites[`${item.type}-${newLevel}`],
-                        type: item.type,
-                        level: newLevel
-                    })
-                }
-            } else if (i < numUpgraded + leftover) {
-                tileGrid[item.gridX][item.gridY].contents = new Item({
-                    gridPosition: { gridX: item.gridX, gridY: item.gridY },
-                    layer: item.layer,
-                    sprite: sprites[`${item.type}-${item.level}`],
-                    type: item.type,
-                    level: item.level
-                })
-            }
-
-            i++
-        }
-
-        console.log(connectedItems);
-
-        return true;
-    }
-}
-
-class Camera {
-    x: number = 0;
-    y: number = 0;
-    viewWidth: number;
-    viewHeight: number;
-
-    hBounds: number;
-    vBounds: number;
-
-    xOffset = 32 * viewScale;
-    yOffset = 48 * viewScale;
-
-    constructor() {
-        this.resized();
-    }
-
-    resized() {
-        this.viewWidth = cnv.width + this.xOffset;
-        this.viewHeight = cnv.height + this.yOffset;
-
-        this.hBounds = (worldWidth * 32 * viewScale) - this.viewWidth + this.xOffset;
-        this.vBounds = (worldHeight * 8 * viewScale) - this.viewHeight + this.yOffset;
-
-        this.move();
-    }
-
-    move(xAmt = 0, yAmt = 0) {
-        if (this.x + xAmt > this.hBounds) {
-            this.x = this.hBounds;
-        } else if (this.x + xAmt < this.xOffset / 2) {
-            this.x = this.xOffset / 2;
-        } else {
-            this.x += xAmt;
-        }
-
-        if (this.y + yAmt > this.vBounds) {
-            this.y = this.vBounds;
-        } else if (this.y + yAmt < 8 * viewScale) {
-            this.y = 8 * viewScale;
-        } else {
-            this.y += yAmt;
-        }
-    }
-
-    // inView(actor: WorldActor) {
-    //     return (actor.x + this.xOffset > this.x && actor.x < this.x + this.viewWidth
-    //         && actor.y + this.yOffset > this.y && actor.y < this.y + this.viewHeight);
-    // }
-}
-
 let camera: Camera;
 
-let sprites: { [x: string]: Sprite } = {};
+export let sprites: { [x: string]: Sprite } = {};
 
 interface IGridTile {
     tile: Tile,
-    contents: any
+    contents: Item
 }
 
-let tileGrid: IGridTile[][] = [];
+export let tileGrid: IGridTile[][] = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('YEET');
@@ -429,10 +93,31 @@ const loadSprites = () => {
     return Promise.allSettled(loadPromises);
 }
 
-
 const startLoop = () => {
     loop = true;
     requestAnimationFrame(rAFLoop);
+}
+
+const save = () => {
+    let saveData = [];
+    for (let i = 0; i < tileGrid.length; i++) {
+        saveData[i] = [];
+        for (let j = 0; j < tileGrid[i].length; j++) {
+            saveData[i][j] = {
+                contents: tileGrid[i][j].contents ? tileGrid[i][j].contents.toJSON() : null,
+                tile: tileGrid[i][j].tile.toJSON()
+            }
+        }
+    }
+
+    let fullState = {
+        tileGrid: saveData,
+        expandableSpaceHere: true
+    }
+
+    localStorage.setItem('save', JSON.stringify(fullState));
+
+    let saved = localStorage.getItem('save')
 }
 
 const loaded = async () => {
@@ -458,6 +143,33 @@ const loaded = async () => {
     // initialize array
     for (let i = 0; i < worldWidth; i++) {
         tileGrid[i] = [];
+    }
+
+    // createNewGame();
+    // save();
+
+    loadGame();
+
+    startLoop();
+}
+
+const loadGame = () => {
+    let saveData = JSON.parse(localStorage.getItem('save'));
+
+    for (let i = 0; i < saveData.tileGrid.length; i++) {
+        tileGrid[i] = [];
+        for (let j = 0; j < saveData.tileGrid[i].length; j++) {
+            tileGrid[i][j] = {
+                contents: saveData.tileGrid[i][j].contents ? new Item({}, saveData.tileGrid[i][j].contents) : null,
+                tile: new Tile({}, saveData.tileGrid[i][j].tile)
+            }
+        }
+    }
+}
+
+// new game
+const createNewGame = () => {
+    for (let i = 0; i < worldWidth; i++) {
         for (let j = 0; j < worldHeight; j++) {
             tileGrid[i][j] = {
                 contents: null,
@@ -474,8 +186,6 @@ const loaded = async () => {
     let waterBorder = 1;
 
     let seed = Math.floor(Math.random() * 1234567);
-
-    console.log(seed);
 
     const noiseGen = makeNoise3D(seed);
 
@@ -520,8 +230,6 @@ const loaded = async () => {
             }
         }
     }
-
-    startLoop();
 }
 
 const flattenArray = array2D => {
@@ -598,6 +306,10 @@ let keysHeld: { [key: string]: boolean } = {};
 
 document.addEventListener('keydown', e => {
     keysHeld[e.key.toLowerCase()] = true;
+
+    if (e.key == 'n') {
+        createNewGame();
+    }
 })
 
 document.addEventListener('keyup', e => {
@@ -668,7 +380,7 @@ const itemTouchListeners = (x, y, targetBB) => {
                     tile.draggedOver = false;
 
                     if (tile.collides(x, y)) {
-                        if (tile.contents && tile.contents.type !== dragged.type) continue;
+                        if (tile.contents && tile.contents.type !== dragged.type && tile.contents.level !== dragged.level) continue;
 
                         const moveItem = () => {
                             tileGrid[tile.gridX][tile.gridY].contents = dragged;
@@ -680,7 +392,7 @@ const itemTouchListeners = (x, y, targetBB) => {
                         }
 
                         if (tile.contents && tile.contents.type == dragged.type) {
-                            if (dragged.merge(tile.contents)) {
+                            if (tile.contents.level == dragged.level && dragged.merge(tile.contents)) {
                                 console.log('good merge');
                                 // moveItem();
                             } else {
@@ -698,6 +410,8 @@ const itemTouchListeners = (x, y, targetBB) => {
 
                 cnv.removeEventListener('touchmove', moveHandler);
                 cnv.removeEventListener('touchend', endHandler);
+
+                save();
             }
 
             cnv.addEventListener('touchmove', moveHandler);
