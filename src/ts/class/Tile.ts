@@ -1,5 +1,5 @@
 import { WorldActor } from './WorldActor.js';
-import { IActorOptions, tileGrid, viewScale, sprites } from '../main.js';
+import { IActorOptions, tileGrid, viewScale } from '../main.js';
 export class Tile extends WorldActor {
     droppable = false;
     draggedOver = false;

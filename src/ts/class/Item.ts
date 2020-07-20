@@ -1,8 +1,8 @@
 import { WorldActor } from './WorldActor.js';
-import { IActorOptions, tileGrid, itemManifest, sprites } from '../main.js';
+import { IActorOptions, tileGrid, itemManifest, sprites, UIElements, randInRange, camera, dropManifest, Coin, cnv, XPDrop } from '../main.js';
 export class Item extends WorldActor {
     level: number;
-    constructor(options?: IActorOptions|any, fromJSON: any = false) {
+    constructor(options?: IActorOptions | any, fromJSON: any = false) {
         super(options, fromJSON);
         this.width = 16;
         this.height = 16;
@@ -60,9 +60,74 @@ export class Item extends WorldActor {
         return connected.filter(item => item && item.type == targetType && item.level == targetLevel);
     }
 
+    get screenX() {
+        return this.x - camera.x;
+    }
+
+    get screenY() {
+        return this.y - camera.y;
+    }
+
     complete() {
-        console.log('Not implemented: Item Completed');
+        // console.log('Not implemented: Item Completed');
         // Use drop table here
+
+        for (let drop in itemManifest[this.type].dropTable) {
+            let nums = itemManifest[this.type].dropTable[drop];
+            let amt = randInRange(nums[0], nums[1]);
+
+            for (let i = 0; i < amt; i++) {
+                switch (drop) {
+                    case 'coin':
+                        UIElements.push(new Coin({
+                            left: this.screenX,
+                            top: this.screenY,
+                            height: 8,
+                            width: 8,
+                            layer: 5,
+                            type: 'coin',
+                            sprite: sprites.coin,
+                            targetPos: [cnv.width, 0],
+                            value: 1
+                        }))
+                        break;
+                    case 'xp':
+                        UIElements.push(new XPDrop({
+                            left: this.screenX,
+                            top: this.screenY,
+                            height: 8,
+                            width: 8,
+                            layer: 5,
+                            type: 'xp',
+                            sprite: sprites.coin,
+                            targetPos: [0, 0],
+                            value: 10
+                        }))
+                        i+=9;
+                        break;
+                    default:
+                        console.log('Drop not implemented:', drop);
+                        break;
+                }
+            }
+        }
+    }
+
+    dropXpForMerge(numUpgraded) {
+        let numBalls = numUpgraded * (itemManifest[this.type].dropTable.xp[0]/10)*this.level;
+        for (let i=0; i<numBalls; i++) {
+            UIElements.push(new XPDrop({
+                left: this.screenX,
+                top: this.screenY,
+                height: 8,
+                width: 8,
+                layer: 5,
+                type: 'xp',
+                sprite: sprites.coin,
+                targetPos: [0, 0],
+                value: Math.floor(itemManifest[this.type].dropTable.xp[0]/20)
+            }))
+        }
     }
 
     merge(merger) {
@@ -75,7 +140,7 @@ export class Item extends WorldActor {
 
         connectedItems.add(merger);
 
-        this.getConnectedItemsOfSameTypeAndLevel(this.type, this.level).forEach(item => connectedItems.add(item));
+        // this.getConnectedItemsOfSameTypeAndLevel(this.type, this.level).forEach(item => connectedItems.add(item));
 
         let depth = 10;
 
@@ -145,6 +210,8 @@ export class Item extends WorldActor {
 
             i++;
         }
+
+        this.dropXpForMerge(numUpgraded);
 
         return true;
     }

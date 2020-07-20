@@ -68,7 +68,7 @@ export abstract class WorldActor {
 
     draw(ctx: CanvasRenderingContext2D, camera: Camera) {
         if (this.inView(camera)) {
-            ctx.drawImage(this.img, this.x - camera.x, this.y - camera.y, this.img.width * viewScale, this.img.height * viewScale);
+            ctx.drawImage(this.img, 0, 0, this.img.width, this.img.height, this.x - camera.x, this.y - camera.y, this.img.width, this.img.height);
             return true;
         }
 

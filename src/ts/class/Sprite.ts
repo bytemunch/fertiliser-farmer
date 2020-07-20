@@ -1,3 +1,5 @@
+import { viewScale } from "../main.js";
+
 export class Sprite {
     cnv = document.createElement('canvas');
 
@@ -6,50 +8,65 @@ export class Sprite {
     ready: Promise<any>;
 
     spriteWidth: number;
+    spriteHeight: number;
+
+    animate: string = 'loop';
+    animationState: number = 0;
+    frameRate: number = 10;
+
+    img: HTMLImageElement;
 
     constructor(src, w = 32, h = 32) {
-        this.cnv.style.imageRendering = 'pixelated';
         this.ctx.imageSmoothingEnabled = false;
 
-        this.spriteWidth = w;
+        document.body.appendChild(this.cnv);
 
-        let img = new Image();
+        this.spriteWidth = w;
+        this.spriteHeight = h;
+
+        this.img = new Image();
 
         this.ready = new Promise(res => {
-            img.addEventListener('load', () => {
+            this.img.addEventListener('load', () => {
+                this.cnv.width = w * viewScale;
+                this.cnv.height = h * viewScale;
 
-                this.cnv.width = w;
-                this.cnv.height = h;
+                this.sheetWidth = this.img.width;
 
-                this.sheetWidth = img.width;
-
-                this.drawSprite(img);
+                this.drawSprite();
                 res();
             });
         });
 
-        img.src = src;
+        this.img.src = src;
     }
 
-    drawSprite(img) {
-        if (this.sheetWidth > this.spriteWidth) {
-            let x = 0;
-            // initial draw
-            this.ctx.drawImage(img, 0, 0, this.cnv.width, this.cnv.height, 0, 0, this.cnv.width, this.cnv.height);
+    reDraw() {
+        this.drawSprite();
+    }
 
-            // animate
-            setInterval(() => {
-                this.ctx.clearRect(0, 0, this.cnv.width, this.cnv.height);
-                this.ctx.drawImage(img, x, 0, this.cnv.width, this.cnv.height, 0, 0, this.cnv.width, this.cnv.height);
-                x += 32;
-                if (x >= this.sheetWidth)
-                    x = 0;
-            }, 666);
-        }
-        else {
+    drawSprite() {
+        switch (this.animate) {
+            case 'loop':
+                // initial draw
+                this.ctx.drawImage(this.img, 0, 0, this.spriteWidth, this.spriteHeight, 0, 0, this.cnv.width, this.cnv.height);
 
-            // no animation
-            this.ctx.drawImage(img, 0, 0, this.cnv.width, this.cnv.height, 0, 0, this.cnv.width, this.cnv.height);
+                // animate
+                setInterval(() => {
+                    this.ctx.clearRect(0, 0, this.cnv.width, this.cnv.height);
+                    this.ctx.drawImage(this.img, this.animationState, 0, this.spriteWidth, this.spriteHeight, 0, 0, this.cnv.width, this.cnv.height);
+                    this.animationState += this.spriteWidth;
+                    if (this.animationState >= this.sheetWidth)
+                        this.animationState = 0;
+                }, (1 / this.frameRate) * 1000);
+                break;
+            default:
+                this.ctx.drawImage(this.img, this.animationState * this.spriteWidth, 0, this.spriteWidth, this.spriteHeight, 0, 0, this.cnv.width, this.cnv.height);
+                setInterval(() => {
+                    this.ctx.clearRect(0, 0, this.cnv.width, this.cnv.height);
+                    this.ctx.drawImage(this.img, this.animationState*this.spriteWidth, 0, this.spriteWidth, this.spriteHeight, 0, 0, this.cnv.width, this.cnv.height);
+                }, (1 / this.frameRate) * 1000);
+                break;
         }
     }
 }

@@ -7,6 +7,7 @@ import { Camera } from './class/Camera.js';
 
 let DEBUG = {
     boundingBoxes: false,
+    showInfo: true
 }
 
 let version;
@@ -25,26 +26,205 @@ window.addEventListener('resize', () => {
     cnv.width = window.innerWidth;
 
     camera.resized();
+
+    UIElements.forEach(el => el.updatePosition())
 })
 
 let contentDiv: HTMLDivElement;
 
 let loop = false;
 
+let state = '';
+
+export class UIElement {
+    left = 0;
+    right: number;
+    top = 0;
+    bottom: number;
+    width = 0;
+    height = 0;
+    layer = 0;
+    type: string;
+    interactable: boolean;
+    sprite: Sprite;
+
+    constructor(opts: IUIOptions) {
+        for (let o in opts) {
+            this[o] = opts[o];
+        }
+        this.layer += 10000;
+
+        this.updatePosition();
+    }
+
+    updatePosition() {
+        if (this.right != undefined) {
+            this.left = cnv.width - this.right - this.width * viewScale;
+        }
+
+        if (this.bottom != undefined) {
+            this.top = cnv.height - this.bottom - this.height * viewScale;
+        }
+    }
+
+    act() {
+        if (!this.interactable) return;
+        console.log('Action not implemented!', this);
+    }
+
+    draw(ctx) {
+        ctx.fillStyle = 'magenta';
+        ctx.fillRect(this.left, this.top, this.width * viewScale, this.height * viewScale);
+    }
+
+    get img() {
+        return this.sprite.cnv;
+    }
+
+    get x() {
+        return this.left;
+    }
+
+    get y() {
+        return this.top;
+    }
+
+    collidePoint(x, y) {
+        return (x > this.x && y > this.y && x < this.x + this.width * viewScale && y < this.y + this.height * viewScale);
+
+    }
+}
+
+export interface IUIOptions {
+    left?: number;
+    right?: number;
+    top?: number;
+    bottom?: number;
+    width: number;
+    height: number;
+    layer: number;
+    type: string;
+    sprite: Sprite;
+}
+
+
+interface IDropOptions extends IUIOptions {
+    targetPos: number[];
+    value: number;
+}
+
+export class Drop extends UIElement {
+    age = 0;
+    directionVector: number[];
+
+    targetDirection: number[];
+    value;
+
+    mag = 0;
+
+    constructor(opts: IDropOptions) {
+        super(opts);
+
+        this.directionVector = [1 - Math.random() * 2, -1 - Math.random()];
+
+        let dX = opts.targetPos[0] - this.left;
+        let dY = opts.targetPos[1] - this.top;
+
+        this.mag = Math.sqrt(dX ** 2 + dY ** 2)
+
+        this.targetDirection = [
+            dX / this.mag,
+            dY / this.mag
+        ]
+    }
+
+    destroy() {
+        UIElements.splice(UIElements.indexOf(this), 1);
+    }
+
+    draw(ctx: CanvasRenderingContext2D) {
+        this.age++;
+        ctx.drawImage(this.img, this.left, this.top, this.img.width, this.img.height);
+        if (this.age < 10) {
+            this.top += this.directionVector[1];
+        } else if (this.age < 20) {
+            this.top -= this.directionVector[1];
+        }
+
+        if (this.age < 20) {
+            this.left += this.directionVector[0];
+        } else {
+            this.left += this.targetDirection[0] * (this.mag / 3) * fElapsedTime;
+            this.top += this.targetDirection[1] * (this.mag / 3) * fElapsedTime;
+        }
+
+        if (this.left > cnv.width || this.top > cnv.height || this.left < 0 || this.top < 0) this.destroy();
+    }
+}
+
+export class XPDrop extends Drop {
+    sprite = sprites.xp;
+
+    destroy() {
+        super.destroy();
+        addXp(this.value);
+    }
+}
+
+export class Coin extends Drop {
+    sprite = sprites.coin;
+
+    destroy() {
+        super.destroy();
+        addCoins(this.value);
+    }
+}
+
 export let worldWidth = 50;
 
 export let worldHeight = worldWidth * 2;
 
-export let viewScale = 1.5;
+export let viewScale = 2;
+
+export let dropManifest = {
+    coin: Coin,
+    shit: Item,
+    xp: XPDrop
+}
 
 export let itemManifest = {
     'shit': {
         maxLevel: 5,
         dropTable: {
             coin: [3, 5],
-            shit: [1, 3]
+            shit: [1, 3],
+            xp: [50, 50]
         }
     }
+}
+
+const getXpBoundaryForLevel = level => {
+    return 100 * level * (level / 2);
+}
+
+const xpToCurrentLevel = xp => {
+    return Math.floor(Math.sqrt(2 * xp / 100));
+}
+
+export const randInRange = (min, max) => {
+    return Math.floor(min + (Math.random() * (max - min + 1)));
+}
+
+export let coins = 0;
+export const addCoins = n => {
+    coins += n;
+    saveGame();
+}
+let xp = 0;
+
+export const addXp = n => {
+    xp += n;
+    saveGame();
 }
 
 export interface IActorOptions {
@@ -57,7 +237,7 @@ export interface IActorOptions {
     level?: number
 }
 
-let camera: Camera;
+export let camera: Camera;
 
 export let sprites: { [x: string]: Sprite } = {};
 
@@ -68,6 +248,72 @@ interface IGridTile {
 
 export let tileGrid: IGridTile[][] = [];
 
+class Bank extends UIElement {
+    interactable = true;
+
+    draw(ctx: CanvasRenderingContext2D) {
+        ctx.drawImage(this.img, this.left, this.top, this.width * viewScale, this.height * viewScale);
+    }
+}
+
+class XPBall extends UIElement {
+    interactable = true;
+
+    draw(ctx: CanvasRenderingContext2D) {
+        ctx.drawImage(this.img, this.left, this.top, this.width * viewScale, this.height * viewScale);
+
+        let level = xpToCurrentLevel(xp);
+
+        ctx.font = '26px monospace';
+
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillText(level.toString(), this.left + 28, this.top + this.height + 26 / 4 + 2);
+
+        ctx.fillStyle = 'white';
+        ctx.fillText(level.toString(), this.left + 26, this.top + this.height + 26 / 4);
+
+        let levelBound = getXpBoundaryForLevel(level);
+        let nextLevelBound = getXpBoundaryForLevel(level + 1);
+
+        let progress = (xp - levelBound) / (nextLevelBound - levelBound);
+
+        // console.log(progress);
+
+        this.sprite.animationState = Math.floor(progress * 26);
+    }
+}
+
+class CoinDisplay extends UIElement {
+    draw(ctx: CanvasRenderingContext2D) {
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(this.left, this.top, this.width * viewScale, this.height * viewScale);
+
+        let fontSize = 16;
+        ctx.font = `${fontSize}px monospace`;
+        ctx.fillStyle = 'white';
+        //@ts-ignore
+        ctx.fillText(coins.toString().padStart(10, '0'), this.left + this.img.width + 4, this.top + fontSize * 0.9);
+        ctx.drawImage(this.img, this.left, this.top, this.img.width, this.img.height);
+    }
+}
+
+class XPDisplay extends UIElement {
+    draw(ctx: CanvasRenderingContext2D) {
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(this.left, this.top, this.width * viewScale, this.height * viewScale);
+
+        let fontSize = 16;
+        ctx.font = `${fontSize}px monospace`;
+        ctx.fillStyle = 'white';
+
+        //@ts-ignore
+        ctx.fillText(xp.toString().padStart(10, '0'), this.left + this.img.width + 4, this.top + fontSize * 0.9);
+        ctx.drawImage(this.img, this.left + 2, this.top, this.img.width, this.img.height);
+    }
+}
+
+export let UIElements: any[] = [];
+
 document.addEventListener('DOMContentLoaded', () => {
     console.log('YEET');
     loaded();
@@ -77,9 +323,11 @@ const loadSprites = () => {
     let loadPromises: Promise<any>[] = [];
 
     sprites.grass = new Sprite('./img/tiles/grass.png', 32, 48);
+    sprites.grass.frameRate = 3;
     loadPromises.push(sprites.grass.ready);
 
     sprites.water = new Sprite('./img/tiles/water.png', 32, 16);
+    sprites.water.frameRate = 3;
     loadPromises.push(sprites.water.ready);
 
     sprites.fog = new Sprite('./img/tiles/fog.png', 32, 48);
@@ -90,6 +338,21 @@ const loadSprites = () => {
         loadPromises.push(sprites[`shit-${i}`].ready);
     }
 
+    sprites.bank = new Sprite(`./img/graphics/bank.png`, 32, 32);
+    loadPromises.push(sprites.bank.ready);
+
+    sprites.coin = new Sprite('./img/items/coin.png', 8, 8);
+    sprites.coin.frameRate = 20;
+    loadPromises.push(sprites.coin.ready);
+
+    sprites.xp = new Sprite('./img/items/xp.png', 8, 8);
+    sprites.xp.frameRate = 20;
+    loadPromises.push(sprites.xp.ready);
+
+    sprites.xporb = new Sprite('./img/graphics/xporb.png', 32, 32);
+    sprites.xporb.animate = 'stepped';
+    loadPromises.push(sprites.xporb.ready);
+
     return Promise.allSettled(loadPromises);
 }
 
@@ -98,7 +361,7 @@ const startLoop = () => {
     requestAnimationFrame(rAFLoop);
 }
 
-const save = () => {
+const saveGame = () => {
     let saveData = [];
     for (let i = 0; i < tileGrid.length; i++) {
         saveData[i] = [];
@@ -111,13 +374,87 @@ const save = () => {
     }
 
     let fullState = {
+        coins: coins,
+        xp: xp,
         tileGrid: saveData,
         expandableSpaceHere: true
     }
 
     localStorage.setItem('save', JSON.stringify(fullState));
+}
 
-    let saved = localStorage.getItem('save')
+
+const loadGame = () => {
+    let saveData = JSON.parse(localStorage.getItem('save'));
+
+    coins = saveData.coins;
+    xp = saveData.xp;
+
+    for (let i = 0; i < saveData.tileGrid.length; i++) {
+        tileGrid[i] = [];
+        for (let j = 0; j < saveData.tileGrid[i].length; j++) {
+            tileGrid[i][j] = {
+                contents: saveData.tileGrid[i][j].contents ? new Item({}, saveData.tileGrid[i][j].contents) : null,
+                tile: new Tile({}, saveData.tileGrid[i][j].tile)
+            }
+        }
+    }
+}
+
+const addGameUI = () => {
+    UIElements = [];
+
+    UIElements.push(new Bank({
+        right: 0,
+        width: 32,
+        height: 32,
+        layer: 2,
+        type: 'bank',
+        sprite: sprites.bank
+    }))
+
+    UIElements.push(new CoinDisplay({
+        right: 64,
+        width: 60,
+        height: 10,
+        layer: 2,
+        type: 'coindisplay',
+        sprite: sprites.coin
+    }))
+
+    UIElements.push(new XPDisplay({
+        left: 64,
+        width: 60,
+        height: 10,
+        layer: 2,
+        type: 'xpdisplay',
+        sprite: sprites.xp
+    }))
+
+    UIElements.push(new XPBall({
+        left: 0,
+        width: 32,
+        height: 32,
+        layer: 2,
+        type: 'xporb',
+        sprite: sprites.xporb
+    }))
+}
+
+const startGame = () => {
+    if (localStorage.getItem('save') == null) {
+        createNewGame();
+    } else {
+        loadGame();
+    }
+
+    addGameUI();
+}
+
+const createMainMenu = () => {
+    state = 'mainmenu';
+    UIElements = [];
+    console.log('Main menu!');
 }
 
 const loaded = async () => {
@@ -145,30 +482,18 @@ const loaded = async () => {
         tileGrid[i] = [];
     }
 
-    // createNewGame();
-    // save();
-
-    loadGame();
+    createMainMenu();
+    // startGame();
 
     startLoop();
 }
 
-const loadGame = () => {
-    let saveData = JSON.parse(localStorage.getItem('save'));
-
-    for (let i = 0; i < saveData.tileGrid.length; i++) {
-        tileGrid[i] = [];
-        for (let j = 0; j < saveData.tileGrid[i].length; j++) {
-            tileGrid[i][j] = {
-                contents: saveData.tileGrid[i][j].contents ? new Item({}, saveData.tileGrid[i][j].contents) : null,
-                tile: new Tile({}, saveData.tileGrid[i][j].tile)
-            }
-        }
-    }
-}
 
 // new game
 const createNewGame = () => {
+    coins = 0;
+    xp = 0;
+
     for (let i = 0; i < worldWidth; i++) {
         for (let j = 0; j < worldHeight; j++) {
             tileGrid[i][j] = {
@@ -195,7 +520,7 @@ const createNewGame = () => {
 
             const noiseScale = 20;
 
-            let itemSize = Math.floor(1 + Math.random() * 5);
+            let itemSize = 1;//Math.floor(1 + Math.random() * 5);
 
             if (noiseGen(i / noiseScale, j / noiseScale, 100) > 0) {
                 let tile;
@@ -230,6 +555,8 @@ const createNewGame = () => {
             }
         }
     }
+
+    saveGame();
 }
 
 const flattenArray = array2D => {
@@ -246,6 +573,9 @@ const flattenArray = array2D => {
 let fps = 0;
 let lastT = 0;
 let frameTime = 0;
+let fElapsedTime = 0;
+
+let frameCount = 0;
 
 let prevFPSs = [];
 
@@ -260,11 +590,40 @@ const avg = (arr) => {
     return rt / arr.length;
 }
 
+const drawGame = () => {
+    let flatArray = flattenArray(tileGrid);
+
+    flatArray.sort((a, b) => a.y - b.y);
+
+    flatArray.sort((a, b) => a.layer - b.layer);
+
+    for (let actor of flatArray) {
+        (<WorldActor>actor).draw(ctx, camera);
+    }
+
+    // UI
+    UIElements.sort((a, b) => a.layer - b.layer);
+    for (let el of UIElements) {
+        el.draw(ctx);
+    }
+}
+
+const drawDebug = () => {
+    //DEBUG
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(0, cnv.height - 20, cnv.width, 20);
+    ctx.fillStyle = 'white';
+    ctx.font = '16px monospace';
+    ctx.fillText('FPS: ' + avgFps.toFixed(2), 10, cnv.height - 4);
+    ctx.fillText('rev' + version, cnv.width - 60, cnv.height - 4);
+}
+
 const rAFLoop = (t: DOMHighResTimeStamp) => {
     ctx.translate(-0.5, -0.5);
     frameTime = t - lastT;
     fps = 1000 / frameTime;
     lastT = t;
+    fElapsedTime = frameTime / 100;
 
     prevFPSs.push(fps);
 
@@ -275,29 +634,22 @@ const rAFLoop = (t: DOMHighResTimeStamp) => {
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, cnv.width, cnv.height);
 
-    let flatArray = flattenArray(tileGrid);
+    switch (state) {
+        case 'playing':
+            break;
 
 
-    flatArray.sort((a, b) => a.y - b.y);
-
-    flatArray.sort((a, b) => a.layer - b.layer);
-
-
-    for (let actor of flatArray) {
-        (<WorldActor>actor).draw(ctx, camera);
     }
+    drawGame();
 
     handleInput();
 
-    //DEBUG
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    ctx.fillRect(0, cnv.height - 20, cnv.width, 20);
-    ctx.fillStyle = 'white';
-    ctx.font = '16px monospace';
-    ctx.fillText('FPS: ' + avgFps.toFixed(2), 10, cnv.height - 4);
-    ctx.fillText('rev' + version, cnv.width - 60, cnv.height - 4);
+    if (DEBUG.showInfo) drawDebug();
+
 
     ctx.resetTransform();
+
+    frameCount++;
 
     if (loop) requestAnimationFrame(rAFLoop);
 }
@@ -318,8 +670,8 @@ document.addEventListener('keyup', e => {
 
 // do this in-class?
 const handleInput = () => {
-    let moveSpeed = 0.2 * frameTime;
-    if (keysHeld['shift']) moveSpeed = 2 * frameTime;
+    let moveSpeed = 70 * fElapsedTime;
+    if (keysHeld['shift']) moveSpeed = 140 * fElapsedTime;
     if (keysHeld['w']) {
         camera.move(0, -moveSpeed);
     } else if (keysHeld['s']) {
@@ -411,7 +763,7 @@ const itemTouchListeners = (x, y, targetBB) => {
                 cnv.removeEventListener('touchmove', moveHandler);
                 cnv.removeEventListener('touchend', endHandler);
 
-                save();
+                saveGame();
             }
 
             cnv.addEventListener('touchmove', moveHandler);
@@ -447,6 +799,19 @@ let cameraTouchListeners = (x, y, targetBB, startX, startY) => {
     cnv.addEventListener('touchend', cameraEndHandler);
 }
 
+const uiTouchListeners = (x, y) => {
+    UIElements.sort((a, b) => b.layer - a.layer);
+    for (let el of UIElements) {
+        // if (!el.interactable) continue;
+
+        if (el.collidePoint(x, y)) {
+            el.act();
+            return true;
+        }
+    }
+    return false;
+}
+
 cnv.addEventListener('touchstart', e => {
     e.preventDefault();
 
@@ -456,6 +821,8 @@ cnv.addEventListener('touchstart', e => {
 
     let x = startX;
     let y = startY;
+
+    if (uiTouchListeners(e.touches[0].pageX - targetBB.x, e.touches[0].pageY - targetBB.y)) return;
 
     if (itemTouchListeners(x, y, targetBB)) return;
 
