@@ -90,8 +90,8 @@ export class Drop extends UIElement {
     constructor(opts: IDropOptions) {
         super(opts);
 
-        this.width = 8;
-        this.height = 8;
+        this.width = 16;
+        this.height = 16;
 
         this.directionVector = [1 - Math.random() * 2, -1 - Math.random()];
 
@@ -157,20 +157,20 @@ export let worldWidth = 50;
 
 export let worldHeight = worldWidth * 2;
 
-export let viewScale = 2;
+export let viewScale = 1;
 
 export let dropManifest = {
     coin: Coin,
-    shit: Item,
+    poop: Item,
     xp: XPDrop
 }
 
 export let itemManifest = {
-    'shit': {
+    'poop': {
         maxLevel: 5,
         dropTable: {
             coin: [3, 5],
-            [`shit-1`]: [1, 3],
+            [`poop-1`]: [1, 3],
             xp: [50, 50]
         }
     }
@@ -233,44 +233,44 @@ document.addEventListener('DOMContentLoaded', () => {
 const loadSprites = () => {
     let loadPromises: Promise<any>[] = [];
 
-    sprites.grass = new Sprite('./img/tiles/grass.png', 32, 48);
+    sprites.grass = new Sprite('./img/2x/tiles/grass.png', 64, 96);
     sprites.grass.frameRate = 3;
     loadPromises.push(sprites.grass.ready);
 
-    sprites.water = new Sprite('./img/tiles/water.png', 32, 16);
+    sprites.water = new Sprite('./img/2x/tiles/water.png', 64, 32);
     sprites.water.frameRate = 3;
     loadPromises.push(sprites.water.ready);
 
-    sprites.fog = new Sprite('./img/tiles/fog.png', 32, 48);
+    sprites.fog = new Sprite('./img/2x/tiles/fog.png', 64, 96);
     loadPromises.push(sprites.fog.ready);
 
     for (let i = 1; i <= 5; i++) {
-        sprites[`shit-${i}`] = new Sprite(`./img/items/shit-${i}.png`);
-        loadPromises.push(sprites[`shit-${i}`].ready);
+        sprites[`poop-${i}`] = new Sprite(`./img/2x/items/poop-${i}.png`);
+        loadPromises.push(sprites[`poop-${i}`].ready);
     }
 
-    sprites.bank = new Sprite(`./img/graphics/bank.png`, 32, 32);
+    sprites.bank = new Sprite(`./img/2x/graphics/bank.png`, 64, 64);
     loadPromises.push(sprites.bank.ready);
 
-    sprites.inventory = new Sprite(`./img/graphics/inventory.png`, 32, 32);
+    sprites.inventory = new Sprite(`./img/2x/graphics/inventory.png`, 64, 64);
     loadPromises.push(sprites.inventory.ready);
 
-    sprites.coin = new Sprite('./img/items/coin.png', 8, 8);
+    sprites.coin = new Sprite('./img/2x/items/coin.png', 16, 16);
     sprites.coin.frameRate = 20;
     loadPromises.push(sprites.coin.ready);
 
-    sprites.xp = new Sprite('./img/items/xp.png', 8, 8);
+    sprites.xp = new Sprite('./img/2x/items/xp.png', 16, 16);
     sprites.xp.frameRate = 20;
     loadPromises.push(sprites.xp.ready);
 
-    sprites.xporb = new Sprite('./img/graphics/xporb.png', 32, 32);
+    sprites.xporb = new Sprite('./img/2x/graphics/xporb.png', 64, 64);
     sprites.xporb.animate = 'stepped';
     loadPromises.push(sprites.xporb.ready);
 
-    sprites.playButton = new Sprite('./img/graphics/btn_play.png', 91, 56);
+    sprites.playButton = new Sprite('./img/2x/graphics/btn_play.png', 182, 112);
     loadPromises.push(sprites.playButton.ready);
 
-    sprites.title = new Sprite('./img/graphics/title.png', 160, 92);
+    sprites.title = new Sprite('./img/2x/graphics/title.png', 320, 184);
     loadPromises.push(sprites.title.ready);
 
     return Promise.allSettled(loadPromises);
@@ -335,8 +335,8 @@ const addGameUI = () => {
 
     UIElements.push(new Bank({
         right: 0,
-        width: 32,
-        height: 32,
+        width: 64,
+        height: 64,
         layer: 2,
         type: 'bank',
         sprite: sprites.bank
@@ -344,8 +344,8 @@ const addGameUI = () => {
 
     UIElements.push(new InventoryButton({
         centerX: true,
-        width: 32,
-        height: 32,
+        width: 64,
+        height: 64,
         layer: 2,
         type: 'inventory',
         sprite: sprites.inventory
@@ -353,8 +353,8 @@ const addGameUI = () => {
 
     UIElements.push(new CoinDisplay({
         right: 64,
-        width: 60,
-        height: 10,
+        width: 120,
+        height: 20,
         layer: 2,
         type: 'coindisplay',
         sprite: sprites.coin
@@ -362,8 +362,8 @@ const addGameUI = () => {
 
     UIElements.push(new XPDisplay({
         left: 64,
-        width: 60,
-        height: 10,
+        width: 120,
+        height: 20,
         layer: 2,
         type: 'xpdisplay',
         sprite: sprites.xp
@@ -371,8 +371,8 @@ const addGameUI = () => {
 
     UIElements.push(new XPBall({
         left: 0,
-        width: 32,
-        height: 32,
+        width: 64,
+        height: 64,
         layer: 2,
         type: 'xporb',
         sprite: sprites.xporb
@@ -395,8 +395,8 @@ const createMainMenu = () => {
     console.log('Main menu!', cnv.width, cnv.height);
 
     UIElements.push(new PlayButton({
-        height: 48,
-        width: 78,
+        height: 48*2,
+        width: 78*2,
         centerX: true,
         bottom: cnv.height * 0.05,
         layer: 10,
@@ -405,8 +405,8 @@ const createMainMenu = () => {
     }))
 
     UIElements.push(new DrawnSprite({
-        height: 92,
-        width: 160,
+        height: 92*2,
+        width: 160*2,
         centerX: true,
         top: cnv.height * 0.05,
         layer: 9,
@@ -451,6 +451,7 @@ const loaded = async () => {
 const createNewGame = () => {
     coins = 0;
     xp = 0;
+    inventory.contents = {};
 
     for (let i = 0; i < worldWidth; i++) {
         for (let j = 0; j < worldHeight; j++) {
@@ -505,8 +506,8 @@ const createNewGame = () => {
                     contents: Math.random() < 0.1 ? new Item({
                         gridPosition: { gridX: i, gridY: j },
                         layer: layer + 10,
-                        sprite: sprites[`shit-${itemSize}`],
-                        type: `shit`,
+                        sprite: sprites[`poop-${itemSize}`],
+                        type: `poop`,
                         level: itemSize
                     }) : null,
                 }

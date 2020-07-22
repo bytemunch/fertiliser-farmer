@@ -4,8 +4,8 @@ export class Item extends WorldActor {
     level: number;
     constructor(options?: IActorOptions | any, fromJSON: any = false) {
         super(options, fromJSON);
-        this.width = 16;
-        this.height = 16;
+        this.width = 32;
+        this.height = 32;
 
         if (fromJSON) {
             this.level = fromJSON.level;
@@ -82,8 +82,8 @@ export class Item extends WorldActor {
                         UIElements.push(new Coin({
                             left: this.screenX,
                             top: this.screenY,
-                            height: 8,
-                            width: 8,
+                            height: 16,
+                            width: 16,
                             layer: 5,
                             type: 'coin',
                             sprite: sprites.coin,
@@ -95,8 +95,8 @@ export class Item extends WorldActor {
                         UIElements.push(new XPDrop({
                             left: this.screenX,
                             top: this.screenY,
-                            height: 8,
-                            width: 8,
+                            height: 16,
+                            width: 16,
                             layer: 5,
                             type: 'xp',
                             sprite: sprites.xp,
@@ -109,8 +109,8 @@ export class Item extends WorldActor {
                         let droppedItem = new ItemDrop({
                             left: this.screenX,
                             top: this.screenY,
-                            height: 8,
-                            width: 8,
+                            height: 16,
+                            width: 16,
                             layer: 5,
                             type: drop.split('-')[0],
                             sprite: sprites[drop],

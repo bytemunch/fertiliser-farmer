@@ -118,11 +118,14 @@ export class XPBall extends UIElement {
 
         ctx.font = '26px monospace';
 
+
+        let textOffsetTop = this.top + this.height  - 26 * 0.75;
+
         ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillText(level.toString(), this.left + 28, this.top + this.height + 26 / 4 + 2);
+        ctx.fillText(level.toString(), this.left + 28, textOffsetTop + 2);
 
         ctx.fillStyle = 'white';
-        ctx.fillText(level.toString(), this.left + 26, this.top + this.height + 26 / 4);
+        ctx.fillText(level.toString(), this.left + 26, textOffsetTop);
 
         let levelBound = getXpBoundaryForLevel(level);
         let nextLevelBound = getXpBoundaryForLevel(level + 1);

@@ -1,11 +1,11 @@
 {
-    "name": "PWA App",
-    "short_name": "PWA",
+    "name": "Fertiliser Farmer",
+    "short_name": "Fertiliser Farmer",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#3d3d3d",
     "theme_color": "#5a0fc8",
-    "description": "PWA application skeleton",
+    "description": "Merge game based on the farming of animals and sale of produced fertiliser.",
     "orientation": "landscape-primary",
     "icons": [
         {

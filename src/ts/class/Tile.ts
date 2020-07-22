@@ -8,8 +8,8 @@ export class Tile extends WorldActor {
 
         this.droppable = opts.droppable;
 
-        this.width = 32;
-        this.height = 16;
+        this.width = 64;
+        this.height = 32;
 
         if (fromJSON) {
             this.droppable = fromJSON.droppable;

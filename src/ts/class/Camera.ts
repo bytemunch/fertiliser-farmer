@@ -9,8 +9,9 @@ export class Camera {
     hBounds: number;
     vBounds: number;
 
-    xOffset = 32 * viewScale;
-    yOffset = 48 * viewScale;
+    //TODO magic numbers
+    xOffset = 64 * viewScale;
+    yOffset = 96 * viewScale;
 
     constructor() {
         this.resized();
@@ -20,8 +21,9 @@ export class Camera {
         this.viewWidth = cnv.width + this.xOffset;
         this.viewHeight = cnv.height + this.yOffset;
 
-        this.hBounds = (worldWidth * 32 * viewScale) - this.viewWidth + this.xOffset;
-        this.vBounds = (worldHeight * 8 * viewScale) - this.viewHeight + this.yOffset;
+        //TODO magic numbers
+        this.hBounds = (worldWidth * 64 * viewScale) - this.viewWidth + this.xOffset;
+        this.vBounds = (worldHeight * 16 * viewScale) - this.viewHeight + this.yOffset;
 
         this.move();
     }
@@ -40,8 +42,10 @@ export class Camera {
         if (this.y + yAmt > this.vBounds) {
             this.y = this.vBounds;
         }
-        else if (this.y + yAmt < 8 * viewScale) {
-            this.y = 8 * viewScale;
+
+        //TODO magic numbers
+        else if (this.y + yAmt < 16 * viewScale) {
+            this.y = 16 * viewScale;
         }
         else {
             this.y += yAmt;

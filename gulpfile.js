@@ -27,45 +27,49 @@ gulp.task('compile', () => {
       .pipe(gulp.dest('release/'))
 })
 
-gulp.task('clean', ()=>{
+gulp.task('clean', () => {
    return gulp.src('./public')
-   .pipe(clean())
+      .pipe(clean())
 })
 
-gulp.task('build', ()=>{
+gulp.task('build', () => {
 
-   let v = Number(fs.readFileSync('./src/version',{encoding: 'UTF-8'}));
+   let v = Number(fs.readFileSync('./src/version', { encoding: 'UTF-8' }));
    v++;
-   fs.writeFileSync('./src/version',v);
+   fs.writeFileSync('./src/version', v);
 
    var mainTs = gulp.src('./src/ts/**/*.ts')
-   .pipe(sourcemap.init())
-   .pipe(ts({target:'es2020'}))
-   .pipe(sourcemap.write())
-   .pipe(gulp.dest('./public/js'))
+      .pipe(sourcemap.init())
+      .pipe(ts({ target: 'es2020' }))
+      .pipe(sourcemap.write())
+      .pipe(gulp.dest('./public/js'))
 
-   var htmlFiles = gulp.src(['./src/*.html','./src/*.css','./src/manifest.json'])
-   .pipe(gulp.dest('./public/'))
+   var htmlFiles = gulp.src(['./src/*.html', './src/*.css', './src/manifest.json'])
+      .pipe(gulp.dest('./public/'))
 
-   var images = gulp.src(['./src/img/**/*','./assets/**/*.png'])
-   .pipe(gulp.dest('./public/img'))
+   var images = gulp.src(['./src/img/**/*', './assets/**/*.png'])
+      .pipe(gulp.dest('./public/img'))
+
+   var upscaleAssets = gulp.src('./assets/**/*.png')
+      .pipe(gulp.dest('./public/img'))
 
    var sw = gulp.src('./src/serviceWorker.ts')
-   .pipe(replace('##VERSION##',`${v}`))
-   .pipe(ts({target:'es2020'}))
-   .pipe(gulp.dest('./public'))
+      .pipe(replace('##VERSION##', `${v}`))
+      .pipe(ts({ target: 'es2020' }))
+      .pipe(gulp.dest('./public'))
 
    var lib = gulp.src('./src/lib/*.js')
-   .pipe(gulp.dest('./public/lib'));
+      .pipe(gulp.dest('./public/lib'));
 
    var version = gulp.src('./src/version')
-   .pipe(gulp.dest('./public/'));
+      .pipe(gulp.dest('./public/'));
 
    var allStreams = merge(mainTs, htmlFiles);
    allStreams.add(images)
    allStreams.add(sw)
    allStreams.add(lib)
    allStreams.add(version)
+   allStreams.add(upscaleAssets)
 
    return allStreams;
 })

@@ -47,22 +47,24 @@ export abstract class WorldActor {
     }
 
     get xOffset(): number {
-        return this.gridY % 2 ? 0 : 16;
+        return this.gridY % 2 ? 0 : this.width/2;
     }
 
     get yOffset(): number {
         return 0;
     }
 
+    //TODO magic numbers
+
     get x() {
         if (this._x === false)
-            this._x = (this.gridX * 32 + this.xOffset) * viewScale;
+            this._x = (this.gridX * 64 + this.xOffset) * viewScale;
         return this._x;
     }
 
     get y() {
         if (this._y === false)
-            this._y = (this.gridY * 8 + this.yOffset) * viewScale;
+            this._y = (this.gridY * 16 + this.yOffset) * viewScale;
         return this._y;
     }
 
