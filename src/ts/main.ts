@@ -273,6 +273,9 @@ const loadSprites = () => {
     sprites.title = new Sprite('./img/2x/graphics/title.png', 320, 184);
     loadPromises.push(sprites.title.ready);
 
+    sprites.close = new Sprite('./img/2x/graphics/close.png', 32, 32);
+    loadPromises.push(sprites.close.ready);
+
     return Promise.allSettled(loadPromises);
 }
 
@@ -761,9 +764,8 @@ let cameraTouchListeners = (x, y, targetBB, startX, startY) => {
 const uiTouchListeners = (x, y) => {
     UIElements.sort((a, b) => b.layer - a.layer);
     for (let el of UIElements) {
-        // if (!el.interactable) continue;
-
         if (el.collidePoint(x, y)) {
+            if (!el.interactable) return true; // eat input
             el.act();
             return true;
         }
