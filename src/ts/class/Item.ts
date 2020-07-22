@@ -1,5 +1,5 @@
 import { WorldActor } from './WorldActor.js';
-import { IActorOptions, tileGrid, itemManifest, sprites, UIElements, randInRange, camera, dropManifest, Coin, cnv, XPDrop } from '../main.js';
+import { IActorOptions, tileGrid, itemManifest, sprites, UIElements, randInRange, camera, dropManifest, Coin, cnv, XPDrop, ItemDrop } from '../main.js';
 export class Item extends WorldActor {
     level: number;
     constructor(options?: IActorOptions | any, fromJSON: any = false) {
@@ -99,14 +99,27 @@ export class Item extends WorldActor {
                             width: 8,
                             layer: 5,
                             type: 'xp',
-                            sprite: sprites.coin,
+                            sprite: sprites.xp,
                             targetPos: [0, 0],
                             value: 10
                         }))
                         i+=9;
                         break;
                     default:
-                        console.log('Drop not implemented:', drop);
+                        let droppedItem = new ItemDrop({
+                            left: this.screenX,
+                            top: this.screenY,
+                            height: 8,
+                            width: 8,
+                            layer: 5,
+                            type: drop.split('-')[0],
+                            sprite: sprites[drop],
+                            targetPos: [cnv.width/2, 0],
+                            value: 1,
+                        });
+                        droppedItem.level = drop.split('-')[1];
+                        UIElements.push(droppedItem);
+                        // console.log('Drop not implemented:', drop);
                         break;
                 }
             }

@@ -1,0 +1,7 @@
+// Only here so VSCODE stops spazzing
+// gulp defines compile options inline
+{
+    "compilerOptions": {
+        "target": "ES2020"
+    }
+}

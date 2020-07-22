@@ -4,6 +4,7 @@ import { WorldActor } from './class/WorldActor.js';
 import { Tile } from './class/Tile.js';
 import { Item } from './class/Item.js';
 import { Camera } from './class/Camera.js';
+import { IUIOptions, UIElement, Bank, CoinDisplay, XPDisplay, XPBall, PlayButton, DrawnSprite, InventoryButton } from './class/UIElements.js';
 
 let DEBUG = {
     boundingBoxes: false,
@@ -36,77 +37,41 @@ let loop = false;
 
 let state = '';
 
-export class UIElement {
-    left = 0;
-    right: number;
-    top = 0;
-    bottom: number;
-    width = 0;
-    height = 0;
-    layer = 0;
-    type: string;
-    interactable: boolean;
-    sprite: Sprite;
+interface IInventoryContents {
+    [itemTypeAndLevel: string]: number
+}
 
-    constructor(opts: IUIOptions) {
-        for (let o in opts) {
-            this[o] = opts[o];
-        }
-        this.layer += 10000;
+class Inventory {
+    contents: IInventoryContents = {};
 
-        this.updatePosition();
+    addItem(item: Item) {
+        this.addByTypeAndLevel(item.type, item.level);
     }
 
-    updatePosition() {
-        if (this.right != undefined) {
-            this.left = cnv.width - this.right - this.width * viewScale;
-        }
-
-        if (this.bottom != undefined) {
-            this.top = cnv.height - this.bottom - this.height * viewScale;
-        }
+    removeItem(item: Item) {
+        this.removeByTypeAndLevel(item.type, item.level);
     }
 
-    act() {
-        if (!this.interactable) return;
-        console.log('Action not implemented!', this);
+    addByTypeAndLevel(type, level) {
+        let typeStr = type + '-' + level;
+        if (!this.contents[typeStr]) this.contents[typeStr] = 0;
+        this.contents[typeStr]++;
+
+        console.log(this.contents);
     }
 
-    draw(ctx) {
-        ctx.fillStyle = 'magenta';
-        ctx.fillRect(this.left, this.top, this.width * viewScale, this.height * viewScale);
+    removeByTypeAndLevel(type, level) {
+        let typeStr = type + '-' + level;
+        if (!this.contents[typeStr]) this.contents[typeStr] = 0;
+        this.contents[typeStr]++;
     }
 
-    get img() {
-        return this.sprite.cnv;
-    }
-
-    get x() {
-        return this.left;
-    }
-
-    get y() {
-        return this.top;
-    }
-
-    collidePoint(x, y) {
-        return (x > this.x && y > this.y && x < this.x + this.width * viewScale && y < this.y + this.height * viewScale);
-
+    toJSON() {
+        return this.contents;
     }
 }
 
-export interface IUIOptions {
-    left?: number;
-    right?: number;
-    top?: number;
-    bottom?: number;
-    width: number;
-    height: number;
-    layer: number;
-    type: string;
-    sprite: Sprite;
-}
-
+export let inventory = new Inventory();
 
 interface IDropOptions extends IUIOptions {
     targetPos: number[];
@@ -124,6 +89,9 @@ export class Drop extends UIElement {
 
     constructor(opts: IDropOptions) {
         super(opts);
+
+        this.width = 8;
+        this.height = 8;
 
         this.directionVector = [1 - Math.random() * 2, -1 - Math.random()];
 
@@ -180,6 +148,15 @@ export class Coin extends Drop {
     }
 }
 
+export class ItemDrop extends Drop {
+    level;
+
+    destroy() {
+        super.destroy();
+        inventory.addByTypeAndLevel(this.type, this.level);
+    }
+}
+
 export let worldWidth = 50;
 
 export let worldHeight = worldWidth * 2;
@@ -197,17 +174,17 @@ export let itemManifest = {
         maxLevel: 5,
         dropTable: {
             coin: [3, 5],
-            shit: [1, 3],
+            [`shit-1`]: [1, 3],
             xp: [50, 50]
         }
     }
 }
 
-const getXpBoundaryForLevel = level => {
+export const getXpBoundaryForLevel = level => {
     return 100 * level * (level / 2);
 }
 
-const xpToCurrentLevel = xp => {
+export const xpToCurrentLevel = xp => {
     return Math.floor(Math.sqrt(2 * xp / 100));
 }
 
@@ -220,7 +197,7 @@ export const addCoins = n => {
     coins += n;
     saveGame();
 }
-let xp = 0;
+export let xp = 0;
 
 export const addXp = n => {
     xp += n;
@@ -248,69 +225,7 @@ interface IGridTile {
 
 export let tileGrid: IGridTile[][] = [];
 
-class Bank extends UIElement {
-    interactable = true;
 
-    draw(ctx: CanvasRenderingContext2D) {
-        ctx.drawImage(this.img, this.left, this.top, this.width * viewScale, this.height * viewScale);
-    }
-}
-
-class XPBall extends UIElement {
-    interactable = true;
-
-    draw(ctx: CanvasRenderingContext2D) {
-        ctx.drawImage(this.img, this.left, this.top, this.width * viewScale, this.height * viewScale);
-
-        let level = xpToCurrentLevel(xp);
-
-        ctx.font = '26px monospace';
-
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillText(level.toString(), this.left + 28, this.top + this.height + 26 / 4 + 2);
-
-        ctx.fillStyle = 'white';
-        ctx.fillText(level.toString(), this.left + 26, this.top + this.height + 26 / 4);
-
-        let levelBound = getXpBoundaryForLevel(level);
-        let nextLevelBound = getXpBoundaryForLevel(level + 1);
-
-        let progress = (xp - levelBound) / (nextLevelBound - levelBound);
-
-        // console.log(progress);
-
-        this.sprite.animationState = Math.floor(progress * 26);
-    }
-}
-
-class CoinDisplay extends UIElement {
-    draw(ctx: CanvasRenderingContext2D) {
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillRect(this.left, this.top, this.width * viewScale, this.height * viewScale);
-
-        let fontSize = 16;
-        ctx.font = `${fontSize}px monospace`;
-        ctx.fillStyle = 'white';
-        //@ts-ignore
-        ctx.fillText(coins.toString().padStart(10, '0'), this.left + this.img.width + 4, this.top + fontSize * 0.9);
-        ctx.drawImage(this.img, this.left, this.top, this.img.width, this.img.height);
-    }
-}
-
-class XPDisplay extends UIElement {
-    draw(ctx: CanvasRenderingContext2D) {
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillRect(this.left, this.top, this.width * viewScale, this.height * viewScale);
-
-        let fontSize = 16;
-        ctx.font = `${fontSize}px monospace`;
-        ctx.fillStyle = 'white';
-
-        //@ts-ignore
-        ctx.fillText(xp.toString().padStart(10, '0'), this.left + this.img.width + 4, this.top + fontSize * 0.9);
-        ctx.drawImage(this.img, this.left + 2, this.top, this.img.width, this.img.height);
-    }
-}
 
 export let UIElements: any[] = [];
 
@@ -341,6 +256,9 @@ const loadSprites = () => {
     sprites.bank = new Sprite(`./img/graphics/bank.png`, 32, 32);
     loadPromises.push(sprites.bank.ready);
 
+    sprites.inventory = new Sprite(`./img/graphics/inventory.png`, 32, 32);
+    loadPromises.push(sprites.inventory.ready);
+
     sprites.coin = new Sprite('./img/items/coin.png', 8, 8);
     sprites.coin.frameRate = 20;
     loadPromises.push(sprites.coin.ready);
@@ -353,6 +271,12 @@ const loadSprites = () => {
     sprites.xporb.animate = 'stepped';
     loadPromises.push(sprites.xporb.ready);
 
+    sprites.playButton = new Sprite('./img/graphics/btn_play.png', 91, 56);
+    loadPromises.push(sprites.playButton.ready);
+
+    sprites.title = new Sprite('./img/graphics/title.png', 160, 92);
+    loadPromises.push(sprites.title.ready);
+
     return Promise.allSettled(loadPromises);
 }
 
@@ -361,26 +285,34 @@ const startLoop = () => {
     requestAnimationFrame(rAFLoop);
 }
 
+let saving;
+
 const saveGame = () => {
-    let saveData = [];
-    for (let i = 0; i < tileGrid.length; i++) {
-        saveData[i] = [];
-        for (let j = 0; j < tileGrid[i].length; j++) {
-            saveData[i][j] = {
-                contents: tileGrid[i][j].contents ? tileGrid[i][j].contents.toJSON() : null,
-                tile: tileGrid[i][j].tile.toJSON()
+
+    clearTimeout(saving);
+
+    saving = setTimeout(()=>{
+        let saveData = [];
+        for (let i = 0; i < tileGrid.length; i++) {
+            saveData[i] = [];
+            for (let j = 0; j < tileGrid[i].length; j++) {
+                saveData[i][j] = {
+                    contents: tileGrid[i][j].contents ? tileGrid[i][j].contents.toJSON() : null,
+                    tile: tileGrid[i][j].tile.toJSON()
+                }
             }
         }
-    }
-
-    let fullState = {
-        coins: coins,
-        xp: xp,
-        tileGrid: saveData,
-        expandableSpaceHere: true
-    }
-
-    localStorage.setItem('save', JSON.stringify(fullState));
+    
+        let fullState = {
+            coins: coins,
+            xp: xp,
+            tileGrid: saveData,
+            inventory: inventory.toJSON(),
+            expandableSpaceHere: true
+        }
+    
+        localStorage.setItem('save', JSON.stringify(fullState));
+    }, 1000);
 }
 
 
@@ -389,6 +321,7 @@ const loadGame = () => {
 
     coins = saveData.coins;
     xp = saveData.xp;
+    inventory.contents = saveData.inventory || {};
 
     for (let i = 0; i < saveData.tileGrid.length; i++) {
         tileGrid[i] = [];
@@ -411,6 +344,15 @@ const addGameUI = () => {
         layer: 2,
         type: 'bank',
         sprite: sprites.bank
+    }))
+
+    UIElements.push(new InventoryButton({
+        centerX: true,
+        width: 32,
+        height: 32,
+        layer: 2,
+        type: 'inventory',
+        sprite: sprites.inventory
     }))
 
     UIElements.push(new CoinDisplay({
@@ -441,7 +383,7 @@ const addGameUI = () => {
     }))
 }
 
-const startGame = () => {
+export const startGame = () => {
     if (localStorage.getItem('save') == null) {
         createNewGame();
     } else {
@@ -454,7 +396,27 @@ const startGame = () => {
 const createMainMenu = () => {
     state = 'mainmenu';
     UIElements = [];
-    console.log('Main menu!');
+    console.log('Main menu!', cnv.width, cnv.height);
+
+    UIElements.push(new PlayButton({
+        height: 48,
+        width: 78,
+        centerX: true,
+        bottom: cnv.height * 0.05,
+        layer: 10,
+        sprite: sprites.playButton,
+        type: 'play'
+    }))
+
+    UIElements.push(new DrawnSprite({
+        height: 92,
+        width: 160,
+        centerX: true,
+        top: cnv.height * 0.05,
+        layer: 9,
+        sprite: sprites.title,
+        type: 'title'
+    }))
 }
 
 const loaded = async () => {
@@ -520,7 +482,7 @@ const createNewGame = () => {
 
             const noiseScale = 20;
 
-            let itemSize = 1;//Math.floor(1 + Math.random() * 5);
+            let itemSize = 5;//Math.floor(1 + Math.random() * 5);
 
             if (noiseGen(i / noiseScale, j / noiseScale, 100) > 0) {
                 let tile;
