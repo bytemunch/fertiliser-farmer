@@ -1,4 +1,4 @@
-import { viewScale, cnv, xpToCurrentLevel, xp, getXpBoundaryForLevel, coins, startGame } from "../main.js";
+import { viewScale, cnv, xpToCurrentLevel, xp, getXpBoundaryForLevel, coins, startGame, inventory, UIElements } from "../main.js";
 import { Sprite } from "./Sprite.js";
 
 export class UIElement {
@@ -49,6 +49,10 @@ export class UIElement {
         ctx.fillRect(this.left, this.top, this.width * viewScale, this.height * viewScale);
     }
 
+    destroy() {
+        UIElements.splice(UIElements.indexOf(this), 1);
+    }
+
     get img() {
         return this.sprite.cnv;
     }
@@ -91,6 +95,13 @@ export class Bank extends UIElement {
 
 export class InventoryButton extends UIElement {
     interactable = true;
+
+    act() {
+        for (let el of UIElements) {
+            if (el.type.split('-')[0] == 'screen') el.destroy();
+        }
+        UIElements.push(new InventoryScreen({type:'screen-inventory'}));
+    }
 
     draw(ctx: CanvasRenderingContext2D) {
         ctx.drawImage(this.img, this.left, this.top, this.width * viewScale, this.height * viewScale);
@@ -167,4 +178,52 @@ export class PlayButton extends UIElement {
     draw(ctx:CanvasRenderingContext2D) {
         ctx.drawImage(this.img, this.left, this.top, this.width * viewScale, this.height * viewScale);
     }
+}
+
+export class InventoryScreen extends UIElement {
+    interactable = true;
+    constructor(opts) {
+        super(opts);
+
+        this.width = cnv.width * 0.9;
+        this.left = cnv.width * 0.05;
+        this.height = cnv.height * 0.8;
+        this.top = cnv.height * 0.1;
+
+        this.populate();
+    }
+
+    updatePosition() {
+        this.width = cnv.width * 0.9;
+        this.left = cnv.width * 0.05;
+        this.height = cnv.height * 0.8;
+        this.top = cnv.height * 0.1;
+    }
+
+    populate() {
+        let items = [];
+
+        for (let i in inventory.contents) {
+            let item = inventory.contents[i];
+            
+            items.push(item);
+        }
+    }
+
+    act() {
+        console.log('touched!');
+        this.destroy();
+    }
+
+    draw(ctx:CanvasRenderingContext2D) {
+        ctx.fillStyle = 'orange';
+        ctx.fillRect(this.x, this.top, this.width, this.height);
+    }
+}
+
+class InventoryItem {
+    type;
+    level;
+
+
 }

@@ -106,10 +106,6 @@ export class Drop extends UIElement {
         ]
     }
 
-    destroy() {
-        UIElements.splice(UIElements.indexOf(this), 1);
-    }
-
     draw(ctx: CanvasRenderingContext2D) {
         this.age++;
         ctx.drawImage(this.img, this.left, this.top, this.img.width, this.img.height);
