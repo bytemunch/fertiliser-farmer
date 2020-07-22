@@ -1,19 +1,26 @@
 import { WorldActor } from './WorldActor.js';
-import { IActorOptions, tileGrid, viewScale } from '../main.js';
+import { IActorOptions, tileGrid, viewScale, sprites } from '../main.js';
+
+export const newTileFromJSON = (data) => {
+    return new Tile({
+        gridPosition: {gridX: data.gridX, gridY: data.gridY},
+        layer: data.layer,
+        sprite: sprites[data.type],
+        type: data.type,
+        droppable: data.droppable
+    })
+}
+
 export class Tile extends WorldActor {
     droppable = false;
     draggedOver = false;
-    constructor(opts?: IActorOptions|any, fromJSON: any = false) {
-        super(opts,fromJSON);
+    constructor(opts?: IActorOptions) {
+        super(opts);
 
         this.droppable = opts.droppable;
 
         this.width = 64;
         this.height = 32;
-
-        if (fromJSON) {
-            this.droppable = fromJSON.droppable;
-        }
     }
 
     toJSON() {

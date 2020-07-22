@@ -1,17 +1,22 @@
 import { WorldActor } from './WorldActor.js';
 import { IActorOptions, tileGrid, itemManifest, sprites, UIElements, randInRange, camera, dropManifest, Coin, cnv, XPDrop, ItemDrop } from '../main.js';
+
+export const newItemFromJSON = (data) => {
+    return new Item({
+        gridPosition: { gridX: data.gridX, gridY: data.gridY },
+        layer: data.layer,
+        sprite: sprites[data.type + '-' + data.level],
+        level: data.level,
+        type: data.type
+    })
+}
 export class Item extends WorldActor {
     level: number;
-    constructor(options?: IActorOptions | any, fromJSON: any = false) {
-        super(options, fromJSON);
+    constructor(options?: IActorOptions) {
+        super(options);
         this.width = 32;
         this.height = 32;
-
-        if (fromJSON) {
-            this.level = fromJSON.level;
-        } else {
-            this.level = options.level || 1;
-        }
+        this.level = options.level || 1;
     }
 
     toJSON() {
@@ -37,7 +42,7 @@ export class Item extends WorldActor {
     }
 
     draw(ctx, cam) {
-        if (tileGrid[this.gridX][this.gridY].tile.type == 'grass')
+        if ((this.gridX == -1 || this.gridY == -1) || tileGrid[this.gridX][this.gridY].tile.type == 'grass')
             return super.draw(ctx, cam);
         return false;
     }
@@ -103,7 +108,7 @@ export class Item extends WorldActor {
                             targetPos: [0, 0],
                             value: 10
                         }))
-                        i+=9;
+                        i += 9;
                         break;
                     default:
                         let droppedItem = new ItemDrop({
@@ -114,7 +119,7 @@ export class Item extends WorldActor {
                             layer: 5,
                             type: drop.split('-')[0],
                             sprite: sprites[drop],
-                            targetPos: [cnv.width/2, 0],
+                            targetPos: [cnv.width / 2, 0],
                             value: 1,
                         });
                         droppedItem.level = drop.split('-')[1];
@@ -127,8 +132,8 @@ export class Item extends WorldActor {
     }
 
     dropXpForMerge(numUpgraded) {
-        let numBalls = numUpgraded * (itemManifest[this.type].dropTable.xp[0]/10)*this.level;
-        for (let i=0; i<numBalls; i++) {
+        let numBalls = numUpgraded * (itemManifest[this.type].dropTable.xp[0] / 10) * this.level;
+        for (let i = 0; i < numBalls; i++) {
             UIElements.push(new XPDrop({
                 left: this.screenX,
                 top: this.screenY,
@@ -138,7 +143,7 @@ export class Item extends WorldActor {
                 type: 'xp',
                 sprite: sprites.coin,
                 targetPos: [0, 0],
-                value: Math.floor(itemManifest[this.type].dropTable.xp[0]/20)
+                value: Math.floor(itemManifest[this.type].dropTable.xp[0] / 20)
             }))
         }
     }
@@ -196,7 +201,7 @@ export class Item extends WorldActor {
         // done
         let i = 0;
         for (let item of connectedItems) {
-            tileGrid[item.gridX][item.gridY].contents = null;
+            if (item.gridX != -1 && item.gridY != -1) tileGrid[item.gridX][item.gridY].contents = null;
             if (i < numUpgraded) {
                 if (newLevel > itemManifest[item.type].maxLevel) {
                     item.complete();

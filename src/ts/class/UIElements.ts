@@ -1,5 +1,6 @@
-import { viewScale, cnv, xpToCurrentLevel, xp, getXpBoundaryForLevel, coins, startGame, inventory, UIElements, sprites } from "../main.js";
+import { viewScale, cnv, xpToCurrentLevel, xp, getXpBoundaryForLevel, coins, startGame, inventory, UIElements, sprites, pickup, tileGrid, extraActors } from "../main.js";
 import { Sprite } from "./Sprite.js";
+import { Item } from "./Item.js";
 
 export class UIElement {
     left = 0;
@@ -191,7 +192,6 @@ class CloseButton extends UIElement {
     }
 
     act() {
-        this.destroy();
         this.target.destroy();
     }
 }
@@ -199,6 +199,7 @@ class CloseButton extends UIElement {
 export class InventoryScreen extends UIElement {
     interactable = false;
     children = [];
+    items = [];
     constructor(opts) {
         super(opts);
 
@@ -209,7 +210,7 @@ export class InventoryScreen extends UIElement {
 
         this.populate();
 
-        UIElements.push(new CloseButton({
+        let closeButton = new CloseButton({
             sprite: sprites.close,
             width: 32,
             height: 32,
@@ -217,7 +218,9 @@ export class InventoryScreen extends UIElement {
             right: cnv.width * 0.05,
             top: this.top,
             layer: 10
-        }, this))
+        }, this);
+        UIElements.push(closeButton);
+        this.children.push(closeButton);
     }
 
     updatePosition() {
@@ -228,12 +231,32 @@ export class InventoryScreen extends UIElement {
     }
 
     populate() {
-        let items = [];
-
         for (let i in inventory.contents) {
-            let item = inventory.contents[i];
+            let item = { type: i, count: inventory.contents[i] };
+            this.items.push(item);
+        }
 
-            items.push(item);
+        let margin = 10;
+        let itemSize = 32;
+        let c = 1;
+
+        for (let i of this.items) {
+            c++;
+            let x = this.left + c * (itemSize + margin);
+            let y = this.top + itemSize;
+
+            let newItem = new InventoryItem({
+                left: x,
+                top: y,
+                type: i.type,
+                sprite: sprites[i.type],
+                height: 32,
+                width: 32,
+                layer: 9
+            }, this)
+
+            this.children.push(newItem);
+            UIElements.push(newItem);
         }
     }
 
@@ -254,9 +277,54 @@ export class InventoryScreen extends UIElement {
     }
 }
 
-class InventoryItem {
-    type;
-    level;
+class InventoryItem extends UIElement {
+    interactable = true;
+    parentScreen:InventoryScreen;
 
+    constructor(opts: IUIOptions, parentScreen:InventoryScreen) {
+        super(opts);
 
+        this.parentScreen = parentScreen;
+    }
+
+    act() {
+        console.log('click',this)
+        // add move listeners etc.
+
+        // create item
+        let item = new Item({
+            gridPosition:{gridX:-1,gridY:-1},
+            layer: 500,
+            sprite: sprites[this.type],
+            type: this.type.split('-')[0],
+            level: Number(this.type.split('-')[1])
+        })
+
+        extraActors.push(item);
+
+        pickup(item, (placed:any)=>{
+            if (placed) inventory.removeByTypeAndLevel(this.type.split('-')[0], this.type.split('-')[1]);
+            extraActors.splice(extraActors.indexOf(item, 1));
+        });
+
+        // add move listener
+            // follow touch with item
+            // close inventory
+
+        this.parentScreen.destroy();
+    }
+
+    draw(ctx: CanvasRenderingContext2D) {
+        let x = this.left;
+        let y = this.top;
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+
+        ctx.fillRect(x, y, this.width, this.height);
+        ctx.drawImage(sprites[this.type].cnv, x, y);
+
+        ctx.font = '14px monospace';
+        ctx.fillStyle = 'white';
+        
+        ctx.fillText(inventory.contents[this.type].toString(), x, y + this.height);
+    }
 }

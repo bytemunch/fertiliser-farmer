@@ -17,37 +17,34 @@ export abstract class WorldActor {
 
     type;
 
-    constructor(opts?: IActorOptions, fromJSON: any = false) {
+    constructor(opts?: IActorOptions) {
         this._x = false;
         this._y = false;
 
         // console.log(fromJSON);
 
-        if (!fromJSON) {
-            this.gridX = opts.gridPosition.gridX;
-            this.gridY = opts.gridPosition.gridY;
+        this.gridX = opts.gridPosition.gridX;
+        this.gridY = opts.gridPosition.gridY;
 
-            this.type = opts.type;
+        this.type = opts.type;
 
-            this.layer = opts.layer;
+        this.layer = opts.layer;
 
-            this.sprite = opts.sprite;
-        } else {
-            // Load JSON data here
-            this.sprite = fromJSON.level ? sprites[fromJSON.type + '-' + fromJSON.level] : sprites[fromJSON.type];
-            this.gridX = fromJSON.gridX;
-            this.gridY = fromJSON.gridY;
-            this.layer = fromJSON.layer;
-            this.type = fromJSON.type;
-        }
+        this.sprite = opts.sprite;
+
     }
 
     get img() {
-        return this.sprite.cnv;
+        try {
+            return this.sprite.cnv;
+        } catch (e) {
+            console.log(this.type);
+            console.error(e);
+        }
     }
 
     get xOffset(): number {
-        return this.gridY % 2 ? 0 : this.width/2;
+        return this.gridY % 2 ? 0 : this.width / 2;
     }
 
     get yOffset(): number {

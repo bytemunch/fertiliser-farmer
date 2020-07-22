@@ -1,8 +1,8 @@
 import { makeNoise3D } from '../lib/osn.js';
 import { Sprite } from './class/Sprite.js';
 import { WorldActor } from './class/WorldActor.js';
-import { Tile } from './class/Tile.js';
-import { Item } from './class/Item.js';
+import { Tile, newTileFromJSON } from './class/Tile.js';
+import { Item, newItemFromJSON } from './class/Item.js';
 import { Camera } from './class/Camera.js';
 import { IUIOptions, UIElement, Bank, CoinDisplay, XPDisplay, XPBall, PlayButton, DrawnSprite, InventoryButton } from './class/UIElements.js';
 
@@ -25,6 +25,7 @@ ctx.imageSmoothingEnabled = false;
 window.addEventListener('resize', () => {
     cnv.height = window.innerHeight;
     cnv.width = window.innerWidth;
+    targetBB = cnv.getBoundingClientRect();
 
     camera.resized();
 
@@ -63,7 +64,8 @@ class Inventory {
     removeByTypeAndLevel(type, level) {
         let typeStr = type + '-' + level;
         if (!this.contents[typeStr]) this.contents[typeStr] = 0;
-        this.contents[typeStr]++;
+        this.contents[typeStr]--;
+        if (this.contents[typeStr] <= 0) delete this.contents[typeStr];
     }
 
     toJSON() {
@@ -77,6 +79,8 @@ interface IDropOptions extends IUIOptions {
     targetPos: number[];
     value: number;
 }
+
+export let extraActors = []
 
 export class Drop extends UIElement {
     age = 0;
@@ -290,7 +294,7 @@ const saveGame = () => {
 
     clearTimeout(saving);
 
-    saving = setTimeout(()=>{
+    saving = setTimeout(() => {
         let saveData = [];
         for (let i = 0; i < tileGrid.length; i++) {
             saveData[i] = [];
@@ -301,7 +305,7 @@ const saveGame = () => {
                 }
             }
         }
-    
+
         let fullState = {
             coins: coins,
             xp: xp,
@@ -309,7 +313,7 @@ const saveGame = () => {
             inventory: inventory.toJSON(),
             expandableSpaceHere: true
         }
-    
+
         localStorage.setItem('save', JSON.stringify(fullState));
     }, 1000);
 }
@@ -326,8 +330,8 @@ const loadGame = () => {
         tileGrid[i] = [];
         for (let j = 0; j < saveData.tileGrid[i].length; j++) {
             tileGrid[i][j] = {
-                contents: saveData.tileGrid[i][j].contents ? new Item({}, saveData.tileGrid[i][j].contents) : null,
-                tile: new Tile({}, saveData.tileGrid[i][j].tile)
+                contents: saveData.tileGrid[i][j].contents ? newItemFromJSON(saveData.tileGrid[i][j].contents) : null,
+                tile: newTileFromJSON(saveData.tileGrid[i][j].tile)
             }
         }
     }
@@ -398,8 +402,8 @@ const createMainMenu = () => {
     console.log('Main menu!', cnv.width, cnv.height);
 
     UIElements.push(new PlayButton({
-        height: 48*2,
-        width: 78*2,
+        height: 48 * 2,
+        width: 78 * 2,
         centerX: true,
         bottom: cnv.height * 0.05,
         layer: 10,
@@ -408,8 +412,8 @@ const createMainMenu = () => {
     }))
 
     UIElements.push(new DrawnSprite({
-        height: 92*2,
-        width: 160*2,
+        height: 92 * 2,
+        width: 160 * 2,
         centerX: true,
         top: cnv.height * 0.05,
         layer: 9,
@@ -555,6 +559,9 @@ const avg = (arr) => {
 const drawGame = () => {
     let flatArray = flattenArray(tileGrid);
 
+    if (frameCount % 60 == 0) console.log(extraActors);
+    flatArray = flatArray.concat(extraActors);
+
     flatArray.sort((a, b) => a.y - b.y);
 
     flatArray.sort((a, b) => a.layer - b.layer);
@@ -646,91 +653,105 @@ const handleInput = () => {
     }
 }
 
-const itemTouchListeners = (x, y, targetBB) => {
+export const pickup = (dragged, callback?) => {
+    // item dragging listeners
+    let x = 0;
+    let y = 0;
+
+    extraActors.push(dragged);
+
+    const moveHandler = e => {
+        e.preventDefault();
+
+        if (dragged.gridX != -1 && dragged.gridY != -1) tileGrid[dragged.gridX][dragged.gridY].contents = null;
+
+        x = e.touches[0].pageX - targetBB.x + camera.x;
+        y = e.touches[0].pageY - targetBB.y + camera.y;
+
+        if (x > cnv.width * 0.9 + camera.x) camera.move(5, 0);
+        if (x < cnv.width * 0.1 + camera.x) camera.move(-5, 0);
+        if (y > cnv.height * 0.9 + camera.y) camera.move(0, 5);
+        if (y < cnv.height * 0.1 + camera.y) camera.move(0, -5);
+
+
+        dragged._x = x - (dragged.width / 2) * viewScale;
+        dragged._y = y - (dragged.height / 2) * viewScale;
+
+        if (frameCount % 60 == 30) console.log(dragged._x);
+
+        for (let tile of flattenArray(tileGrid)) {
+            tile = tile as Tile;
+            if (!tile.droppable) continue;
+
+            tile.draggedOver = false;
+
+            if (tile.collides(x, y)) {
+                tile.draggedOver = true;
+            }
+        }
+    };
+
+    const endHandler = e => {
+        e.preventDefault();
+
+        for (let tile of flattenArray(tileGrid)) {
+            tile = tile as Tile;
+            if (!tile.droppable) continue;
+
+            tile.draggedOver = false;
+
+            if (tile.collides(x, y)) {
+                if (tile.contents && tile.contents.type !== dragged.type && tile.contents.level !== dragged.level) continue;
+
+                const moveItem = () => {
+                    tileGrid[tile.gridX][tile.gridY].contents = dragged;
+
+                    // set dragged position to dropped grid
+                    dragged.gridX = tile.gridX;
+                    dragged.gridY = tile.gridY;
+
+                    if (callback) callback(true);
+                }
+
+                if (tile.contents && tile.contents.type == dragged.type) {
+                    if (tile.contents.level == dragged.level && dragged.merge(tile.contents)) {
+                        console.log('good merge');
+                        if (callback) callback(true);
+                        // moveItem();
+                    } else {
+                        console.log('bad merge');
+                    }
+                } else {
+                    moveItem();
+                }
+                break;
+            }
+        }
+
+        dragged._x = false;
+        dragged._y = false;
+
+        cnv.removeEventListener('touchmove', moveHandler);
+        cnv.removeEventListener('touchend', endHandler);
+        if (callback) callback(false);
+
+        extraActors.splice(extraActors.indexOf(dragged), 1);
+
+        saveGame();
+    }
+
+    cnv.addEventListener('touchmove', moveHandler);
+    cnv.addEventListener('touchend', endHandler);
+
+    return true;
+}
+
+const itemTouchListeners = (x, y) => {
     for (let actor of flattenArray(tileGrid)) {
         actor = actor as WorldActor;
 
         if (actor.draggable && actor.collides(x, y)) {
-            // item dragging listeners
-            let dragged: Item = actor;
-
-            x -= (dragged.width / 2) * viewScale;
-            y -= (dragged.height / 2) * viewScale;
-
-            const moveHandler = e => {
-                e.preventDefault();
-
-                x = e.touches[0].pageX - targetBB.x + camera.x;
-                y = e.touches[0].pageY - targetBB.y + camera.y;
-
-                if (x > cnv.width * 0.9 + camera.x) camera.move(5, 0);
-                if (x < cnv.width * 0.1 + camera.x) camera.move(-5, 0);
-                if (y > cnv.height * 0.9 + camera.y) camera.move(0, 5);
-                if (y < cnv.height * 0.1 + camera.y) camera.move(0, -5);
-
-
-                dragged._x = x - (dragged.width / 2) * viewScale;
-                dragged._y = y - (dragged.height / 2) * viewScale;
-
-                for (let tile of flattenArray(tileGrid)) {
-                    tile = tile as Tile;
-                    if (!tile.droppable) continue;
-
-                    tile.draggedOver = false;
-
-                    if (tile.collides(x, y)) {
-                        tile.draggedOver = true;
-                    }
-                }
-            };
-
-            const endHandler = e => {
-                e.preventDefault();
-
-                for (let tile of flattenArray(tileGrid)) {
-                    tile = tile as Tile;
-                    if (!tile.droppable) continue;
-
-                    tile.draggedOver = false;
-
-                    if (tile.collides(x, y)) {
-                        if (tile.contents && tile.contents.type !== dragged.type && tile.contents.level !== dragged.level) continue;
-
-                        const moveItem = () => {
-                            tileGrid[tile.gridX][tile.gridY].contents = dragged;
-                            tileGrid[dragged.gridX][dragged.gridY].contents = null;
-
-                            // set dragged position to dropped grid
-                            dragged.gridX = tile.gridX;
-                            dragged.gridY = tile.gridY;
-                        }
-
-                        if (tile.contents && tile.contents.type == dragged.type) {
-                            if (tile.contents.level == dragged.level && dragged.merge(tile.contents)) {
-                                console.log('good merge');
-                                // moveItem();
-                            } else {
-                                console.log('bad merge');
-                            }
-                        } else {
-                            moveItem();
-                        }
-                        break;
-                    }
-                }
-
-                dragged._x = false;
-                dragged._y = false;
-
-                cnv.removeEventListener('touchmove', moveHandler);
-                cnv.removeEventListener('touchend', endHandler);
-
-                saveGame();
-            }
-
-            cnv.addEventListener('touchmove', moveHandler);
-            cnv.addEventListener('touchend', endHandler);
-
+            pickup(actor);
             return true;
         }
     }
@@ -773,10 +794,11 @@ const uiTouchListeners = (x, y) => {
     return false;
 }
 
+let targetBB = cnv.getBoundingClientRect();
+
 cnv.addEventListener('touchstart', e => {
     e.preventDefault();
 
-    let targetBB = (<HTMLElement>e.target).getBoundingClientRect();
     let startX = e.touches[0].pageX - targetBB.x + camera.x;
     let startY = e.touches[0].pageY - targetBB.y + camera.y;
 
@@ -785,7 +807,7 @@ cnv.addEventListener('touchstart', e => {
 
     if (uiTouchListeners(e.touches[0].pageX - targetBB.x, e.touches[0].pageY - targetBB.y)) return;
 
-    if (itemTouchListeners(x, y, targetBB)) return;
+    if (itemTouchListeners(x, y)) return;
 
     let interactableObjectPressed = false;
 
