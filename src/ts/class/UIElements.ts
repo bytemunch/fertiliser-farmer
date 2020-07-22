@@ -238,12 +238,20 @@ export class InventoryScreen extends UIElement {
 
         let margin = 10;
         let itemSize = 32;
-        let c = 1;
+        let n = 0;
 
         for (let i of this.items) {
-            c++;
-            let x = this.left + c * (itemSize + margin);
-            let y = this.top + (c % (this.width / (itemSize + margin)) * itemSize);
+            let maxCols = Math.floor(1 / ((itemSize + margin) / (this.width-margin*2)));
+
+            let c = (n % maxCols);
+
+            let r = Math.floor(n / maxCols);
+
+            let x = this.left + c * (itemSize + margin) + margin;
+            let y = this.top + r * (itemSize + margin) + margin;
+
+            n++;
+
 
             let newItem = new InventoryItem({
                 left: x,
@@ -288,7 +296,6 @@ class InventoryItem extends UIElement {
     }
 
     act() {
-        console.log('click', this)
         // add move listeners etc.
 
         // create item

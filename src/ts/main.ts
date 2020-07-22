@@ -43,7 +43,8 @@ interface IInventoryContents {
 }
 
 class Inventory {
-    contents: IInventoryContents = {};
+    contents: IInventoryContents = {
+    };
 
     addItem(item: Item) {
         this.addByTypeAndLevel(item.type, item.level);
@@ -458,7 +459,7 @@ const loaded = async () => {
 const createNewGame = () => {
     coins = 0;
     xp = 0;
-    inventory.contents = {};
+    inventory = new Inventory;
 
     for (let i = 0; i < worldWidth; i++) {
         for (let j = 0; j < worldHeight; j++) {
@@ -740,7 +741,7 @@ export const pickup = (dragged, callback?) => {
         if (callback) callback(goodMove);
 
         if (!goodMove) {
-            tileGrid[dragged.gridX][dragged.gridY].contents = dragged;
+            if (dragged.gridX != -1 && dragged.gridY != -1) tileGrid[dragged.gridX][dragged.gridY].contents = dragged;
         }
 
         saveGame();
