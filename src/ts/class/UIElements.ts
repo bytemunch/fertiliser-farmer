@@ -243,7 +243,7 @@ export class InventoryScreen extends UIElement {
         for (let i of this.items) {
             c++;
             let x = this.left + c * (itemSize + margin);
-            let y = this.top + itemSize;
+            let y = this.top + (c % (this.width / (itemSize + margin)) * itemSize);
 
             let newItem = new InventoryItem({
                 left: x,
@@ -279,21 +279,21 @@ export class InventoryScreen extends UIElement {
 
 class InventoryItem extends UIElement {
     interactable = true;
-    parentScreen:InventoryScreen;
+    parentScreen: InventoryScreen;
 
-    constructor(opts: IUIOptions, parentScreen:InventoryScreen) {
+    constructor(opts: IUIOptions, parentScreen: InventoryScreen) {
         super(opts);
 
         this.parentScreen = parentScreen;
     }
 
     act() {
-        console.log('click',this)
+        console.log('click', this)
         // add move listeners etc.
 
         // create item
         let item = new Item({
-            gridPosition:{gridX:-1,gridY:-1},
+            gridPosition: { gridX: -1, gridY: -1 },
             layer: 500,
             sprite: sprites[this.type],
             type: this.type.split('-')[0],
@@ -302,14 +302,14 @@ class InventoryItem extends UIElement {
 
         extraActors.push(item);
 
-        pickup(item, (placed:any)=>{
+        pickup(item, (placed: any) => {
             if (placed) inventory.removeByTypeAndLevel(this.type.split('-')[0], this.type.split('-')[1]);
             extraActors.splice(extraActors.indexOf(item, 1));
         });
 
         // add move listener
-            // follow touch with item
-            // close inventory
+        // follow touch with item
+        // close inventory
 
         this.parentScreen.destroy();
     }
@@ -324,7 +324,7 @@ class InventoryItem extends UIElement {
 
         ctx.font = '14px monospace';
         ctx.fillStyle = 'white';
-        
+
         ctx.fillText(inventory.contents[this.type].toString(), x, y + this.height);
     }
 }

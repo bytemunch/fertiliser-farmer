@@ -559,7 +559,6 @@ const avg = (arr) => {
 const drawGame = () => {
     let flatArray = flattenArray(tileGrid);
 
-    if (frameCount % 60 == 0) console.log(extraActors);
     flatArray = flatArray.concat(extraActors);
 
     flatArray.sort((a, b) => a.y - b.y);
@@ -677,8 +676,6 @@ export const pickup = (dragged, callback?) => {
         dragged._x = x - (dragged.width / 2) * viewScale;
         dragged._y = y - (dragged.height / 2) * viewScale;
 
-        if (frameCount % 60 == 30) console.log(dragged._x);
-
         for (let tile of flattenArray(tileGrid)) {
             tile = tile as Tile;
             if (!tile.droppable) continue;
@@ -691,14 +688,17 @@ export const pickup = (dragged, callback?) => {
         }
     };
 
+
     const endHandler = e => {
         e.preventDefault();
+        let goodMove = false;
 
         for (let tile of flattenArray(tileGrid)) {
             tile = tile as Tile;
             if (!tile.droppable) continue;
 
             tile.draggedOver = false;
+
 
             if (tile.collides(x, y)) {
                 if (tile.contents && tile.contents.type !== dragged.type && tile.contents.level !== dragged.level) continue;
@@ -710,13 +710,13 @@ export const pickup = (dragged, callback?) => {
                     dragged.gridX = tile.gridX;
                     dragged.gridY = tile.gridY;
 
-                    if (callback) callback(true);
+                    goodMove = true;
                 }
 
                 if (tile.contents && tile.contents.type == dragged.type) {
                     if (tile.contents.level == dragged.level && dragged.merge(tile.contents)) {
                         console.log('good merge');
-                        if (callback) callback(true);
+                        goodMove = true;
                         // moveItem();
                     } else {
                         console.log('bad merge');
@@ -736,6 +736,12 @@ export const pickup = (dragged, callback?) => {
         if (callback) callback(false);
 
         extraActors.splice(extraActors.indexOf(dragged), 1);
+
+        if (callback) callback(goodMove);
+
+        if (!goodMove) {
+            tileGrid[dragged.gridX][dragged.gridY].contents = dragged;
+        }
 
         saveGame();
     }
