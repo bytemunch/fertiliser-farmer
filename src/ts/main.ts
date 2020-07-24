@@ -58,8 +58,6 @@ class Inventory {
         let typeStr = type + '-' + level;
         if (!this.contents[typeStr]) this.contents[typeStr] = 0;
         this.contents[typeStr]++;
-
-        console.log(this.contents);
     }
 
     removeByTypeAndLevel(type, level) {
@@ -231,54 +229,53 @@ export let tileGrid: IGridTile[][] = [];
 export let UIElements: any[] = [];
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('YEET');
     loaded();
 })
 
 const loadSprites = () => {
     let loadPromises: Promise<any>[] = [];
 
-    sprites.grass = new Sprite('./img/2x/tiles/grass.png', 64, 96);
+    sprites.grass = new Sprite('./img/tiles/grass.png', 64, 96);
     sprites.grass.frameRate = 3;
     loadPromises.push(sprites.grass.ready);
 
-    sprites.water = new Sprite('./img/2x/tiles/water.png', 64, 32);
+    sprites.water = new Sprite('./img/tiles/water.png', 64, 32);
     sprites.water.frameRate = 3;
     loadPromises.push(sprites.water.ready);
 
-    sprites.fog = new Sprite('./img/2x/tiles/fog.png', 64, 96);
+    sprites.fog = new Sprite('./img/tiles/fog.png', 64, 96);
     loadPromises.push(sprites.fog.ready);
 
     for (let i = 1; i <= 5; i++) {
-        sprites[`poop-${i}`] = new Sprite(`./img/2x/items/poop-${i}.png`);
+        sprites[`poop-${i}`] = new Sprite(`./img/items/poop-${i}.png`);
         loadPromises.push(sprites[`poop-${i}`].ready);
     }
 
-    sprites.bank = new Sprite(`./img/2x/graphics/bank.png`, 64, 64);
+    sprites.bank = new Sprite(`./img/graphics/bank.png`, 64, 64);
     loadPromises.push(sprites.bank.ready);
 
-    sprites.inventory = new Sprite(`./img/2x/graphics/inventory.png`, 64, 64);
+    sprites.inventory = new Sprite(`./img/graphics/inventory.png`, 64, 64);
     loadPromises.push(sprites.inventory.ready);
 
-    sprites.coin = new Sprite('./img/2x/items/coin.png', 16, 16);
+    sprites.coin = new Sprite('./img/items/coin.png', 16, 16);
     sprites.coin.frameRate = 20;
     loadPromises.push(sprites.coin.ready);
 
-    sprites.xp = new Sprite('./img/2x/items/xp.png', 16, 16);
+    sprites.xp = new Sprite('./img/items/xp.png', 16, 16);
     sprites.xp.frameRate = 20;
     loadPromises.push(sprites.xp.ready);
 
-    sprites.xporb = new Sprite('./img/2x/graphics/xporb.png', 64, 64);
+    sprites.xporb = new Sprite('./img/graphics/xporb.png', 64, 64);
     sprites.xporb.animate = 'stepped';
     loadPromises.push(sprites.xporb.ready);
 
-    sprites.playButton = new Sprite('./img/2x/graphics/btn_play.png', 182, 112);
+    sprites.playButton = new Sprite('./img/graphics/btn_play.png', 182, 112);
     loadPromises.push(sprites.playButton.ready);
 
-    sprites.title = new Sprite('./img/2x/graphics/title.png', 320, 184);
+    sprites.title = new Sprite('./img/graphics/title.png', 320, 184);
     loadPromises.push(sprites.title.ready);
 
-    sprites.close = new Sprite('./img/2x/graphics/close.png', 32, 32);
+    sprites.close = new Sprite('./img/graphics/close.png', 32, 32);
     loadPromises.push(sprites.close.ready);
 
     return Promise.allSettled(loadPromises);
@@ -400,7 +397,6 @@ export const startGame = () => {
 const createMainMenu = () => {
     state = 'mainmenu';
     UIElements = [];
-    console.log('Main menu!', cnv.width, cnv.height);
 
     UIElements.push(new PlayButton({
         height: 48 * 2,
@@ -716,11 +712,7 @@ export const pickup = (dragged, callback?) => {
 
                 if (tile.contents && tile.contents.type == dragged.type) {
                     if (tile.contents.level == dragged.level && dragged.merge(tile.contents)) {
-                        console.log('good merge');
                         goodMove = true;
-                        // moveItem();
-                    } else {
-                        console.log('bad merge');
                     }
                 } else {
                     moveItem();

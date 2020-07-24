@@ -196,10 +196,17 @@ class CloseButton extends UIElement {
     }
 }
 
-export class InventoryScreen extends UIElement {
+class Screen extends UIElement {
     interactable = false;
     children = [];
     items = [];
+    borderw = 4;
+
+    color1 = 'lightblue';
+    color2 = 'orange';
+
+    title = 'Unnamed Screen';
+
     constructor(opts) {
         super(opts);
 
@@ -208,19 +215,23 @@ export class InventoryScreen extends UIElement {
         this.height = cnv.height * 0.8;
         this.top = cnv.height * 0.1;
 
-        this.populate();
-
         let closeButton = new CloseButton({
             sprite: sprites.close,
             width: 32,
             height: 32,
             type: 'button-close',
-            right: cnv.width * 0.05,
-            top: this.top,
+            right: cnv.width * 0.05 - 8,
+            top: this.top - 8,
             layer: 10
         }, this);
         UIElements.push(closeButton);
         this.children.push(closeButton);
+
+        this.populate();
+    }
+
+    populate() {
+        console.error('Populate function not implemented!');
     }
 
     updatePosition() {
@@ -229,6 +240,53 @@ export class InventoryScreen extends UIElement {
         this.height = cnv.height * 0.8;
         this.top = cnv.height * 0.1;
     }
+
+    destroy() {
+        super.destroy();
+        for (let c of this.children) {
+            c.destroy();
+        }
+    }
+
+    drawBG(ctx) {
+        ctx.fillStyle = this.color1;
+        ctx.fillRect(this.x, this.top, this.width, this.height);
+
+        // top border
+        ctx.fillStyle = this.color2;
+        ctx.fillRect(this.x, this.top, this.width, this.borderw);
+        ctx.fillRect(this.x, this.top + 2 * this.borderw, this.width, this.borderw);
+
+        // bottom
+        ctx.fillRect(this.x, this.top + this.height - this.borderw, this.width, this.borderw);
+        ctx.fillRect(this.x, this.top + this.height - 3 * this.borderw, this.width, this.borderw);
+
+        // left
+        ctx.fillRect(this.x, this.top, this.borderw, this.height);
+        ctx.fillRect(this.x + this.borderw * 2, this.top, this.borderw, this.height);
+
+        // right
+        ctx.fillRect(this.x + this.width - this.borderw, this.top, this.borderw, this.height);
+        ctx.fillRect(this.x + this.width - 3 * this.borderw, this.top, this.borderw, this.height);
+    }
+
+    drawTitle(ctx) {
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        let fontSize = 26;
+        ctx.font = fontSize + 'px monospace';
+        ctx.fillText(this.title, this.left + this.borderw * 3 + 2, 2 + this.top + fontSize * .75 + this.borderw * 3);
+        ctx.fillStyle = 'white';
+        ctx.fillText(this.title, this.left + this.borderw * 3, this.top + fontSize * .75 + this.borderw * 3);
+    }
+
+    draw(ctx) {
+        this.drawBG(ctx);
+        this.drawTitle(ctx);
+    }
+}
+
+export class InventoryScreen extends Screen {
+    title = 'Inventory';
 
     populate() {
         for (let i in inventory.contents) {
@@ -240,18 +298,20 @@ export class InventoryScreen extends UIElement {
         let itemSize = 32;
         let n = 0;
 
+        let topPad = 48;
+        let leftPad = 16;
+
         for (let i of this.items) {
-            let maxCols = Math.floor(1 / ((itemSize + margin) / (this.width-margin*2)));
+            let maxCols = Math.floor(1 / ((itemSize + margin) / (this.width - margin * 2 - leftPad * 2)));
 
             let c = (n % maxCols);
 
             let r = Math.floor(n / maxCols);
 
-            let x = this.left + c * (itemSize + margin) + margin;
-            let y = this.top + r * (itemSize + margin) + margin;
+            let x = this.left + c * (itemSize + margin) + margin + leftPad;
+            let y = this.top + r * (itemSize + margin) + margin + topPad;
 
             n++;
-
 
             let newItem = new InventoryItem({
                 left: x,
@@ -266,22 +326,6 @@ export class InventoryScreen extends UIElement {
             this.children.push(newItem);
             UIElements.push(newItem);
         }
-    }
-
-    act() {
-        console.log('touched!');
-        this.destroy();
-    }
-
-    destroy() {
-        super.destroy();
-        for (let c of this.children) {
-            c.destroy();
-        }
-    }
-    draw(ctx: CanvasRenderingContext2D) {
-        ctx.fillStyle = 'orange';
-        ctx.fillRect(this.x, this.top, this.width, this.height);
     }
 }
 
