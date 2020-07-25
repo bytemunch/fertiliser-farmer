@@ -85,8 +85,24 @@ export interface IUIOptions {
     sprite: Sprite;
 }
 
+const openScreen = (screen: Screen) => {
+    let el = screenIsOpen();
+    if (el) el.destroy();
+    UIElements.push(screen);
+}
+
+const screenIsOpen = () => {
+    for (let el of UIElements) {
+        if (el.type.split('-')[0] == 'screen') return el;
+    }
+}
+
 export class Bank extends UIElement {
     interactable = true;
+
+    act() {
+        if (!screenIsOpen()) openScreen(new BankScreen);
+    }
 
     draw(ctx: CanvasRenderingContext2D) {
         ctx.drawImage(this.img, this.left, this.top, this.width * viewScale, this.height * viewScale);
@@ -97,10 +113,7 @@ export class InventoryButton extends UIElement {
     interactable = true;
 
     act() {
-        for (let el of UIElements) {
-            if (el.type.split('-')[0] == 'screen') el.destroy();
-        }
-        UIElements.push(new InventoryScreen({ type: 'screen-inventory' }));
+        if (!screenIsOpen()) openScreen(new InventoryScreen)
     }
 
     draw(ctx: CanvasRenderingContext2D) {
@@ -110,6 +123,10 @@ export class InventoryButton extends UIElement {
 
 export class XPBall extends UIElement {
     interactable = true;
+
+    act() {
+        if (!screenIsOpen()) openScreen(new RewardScreen);
+    }
 
     draw(ctx: CanvasRenderingContext2D) {
         ctx.drawImage(this.img, this.left, this.top, this.width * viewScale, this.height * viewScale);
@@ -207,13 +224,16 @@ class Screen extends UIElement {
 
     title = 'Unnamed Screen';
 
-    constructor(opts) {
-        super(opts);
-
-        this.width = cnv.width * 0.9;
-        this.left = cnv.width * 0.05;
-        this.height = cnv.height * 0.8;
-        this.top = cnv.height * 0.1;
+    constructor() {
+        super({
+            height: cnv.height * 0.8,
+            width: cnv.width * 0.9,
+            left: cnv.width * 0.05,
+            top: cnv.height * 0.1,
+            layer: 100000,
+            sprite: null,
+            type: 'screen'
+        });
 
         let closeButton = new CloseButton({
             sprite: sprites.close,
@@ -222,7 +242,7 @@ class Screen extends UIElement {
             type: 'button-close',
             right: cnv.width * 0.05 - 8,
             top: this.top - 8,
-            layer: 10
+            layer: this.layer + 10
         }, this);
         UIElements.push(closeButton);
         this.children.push(closeButton);
@@ -287,6 +307,8 @@ class Screen extends UIElement {
 
 export class InventoryScreen extends Screen {
     title = 'Inventory';
+    color1 = '#baff7d';
+    color2 = '#ff7dba';
 
     populate() {
         for (let i in inventory.contents) {
@@ -320,7 +342,7 @@ export class InventoryScreen extends Screen {
                 sprite: sprites[i.type],
                 height: 32,
                 width: 32,
-                layer: 9
+                layer: this.layer + 9
             }, this)
 
             this.children.push(newItem);
@@ -378,4 +400,18 @@ class InventoryItem extends UIElement {
 
         ctx.fillText(inventory.contents[this.type].toString(), x, y + this.height);
     }
+}
+
+class BankScreen extends Screen {
+    title = 'Bank';
+    color1 = 'orange';
+    color2 = 'green';
+    type = 'screen-bank';
+}
+
+class RewardScreen extends Screen {
+    title = 'Rewards';
+    color1 = 'lightblue';
+    color2 = 'orange';
+    type = 'screen-rewards';
 }

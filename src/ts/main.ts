@@ -110,16 +110,16 @@ export class Drop extends UIElement {
     }
 
     draw(ctx: CanvasRenderingContext2D) {
-        this.age++;
+        this.age+=fElapsedTime*5;
         ctx.drawImage(this.img, this.left, this.top, this.img.width, this.img.height);
         if (this.age < 10) {
-            this.top += this.directionVector[1];
+            this.top += this.directionVector[1] * fElapsedTime*5;
         } else if (this.age < 20) {
-            this.top -= this.directionVector[1];
+            this.top -= this.directionVector[1] * fElapsedTime*5;
         }
 
         if (this.age < 20) {
-            this.left += this.directionVector[0];
+            this.left += this.directionVector[0] * fElapsedTime*5;
         } else {
             this.left += this.targetDirection[0] * (this.mag / 3) * fElapsedTime;
             this.top += this.targetDirection[1] * (this.mag / 3) * fElapsedTime;
@@ -179,6 +179,15 @@ export let itemManifest = {
     }
 }
 
+let levelManifest = {
+    1: {
+        rewards: {
+            coin: 15,
+            antifog: 10
+        }
+    }
+}
+
 export const getXpBoundaryForLevel = level => {
     return 100 * level * (level / 2);
 }
@@ -199,8 +208,24 @@ export const addCoins = n => {
 export let xp = 0;
 
 export const addXp = n => {
+    let prevLvl = xpToCurrentLevel(xp);
     xp += n;
+    let nextLvl = xpToCurrentLevel(xp);
+
+    if (prevLvl < nextLvl) levelUp();
     saveGame();
+}
+
+const levelUp = () => {
+    let lvl = xpToCurrentLevel(xp);
+
+    if (!levelManifest[lvl]) {
+        console.error('Rewards not implemented for level '+lvl);
+        return;
+    } else {
+        // create reward screen
+        console.log('Reward screen not implemented!', levelManifest[lvl]);
+    }
 }
 
 export interface IActorOptions {
