@@ -4,12 +4,21 @@ import { WorldActor } from './class/WorldActor.js';
 import { Tile, newTileFromJSON } from './class/Tile.js';
 import { Item, newItemFromJSON } from './class/Item.js';
 import { Camera } from './class/Camera.js';
-import { IUIOptions, UIElement, Bank, CoinDisplay, XPDisplay, XPBall, PlayButton, DrawnSprite, InventoryButton } from './class/UIElements.js';
+import { IUIOptions, UIElement, Bank, CoinDisplay, XPDisplay, XPBall, PlayButton, DrawnSprite, InventoryButton, LevelUpScreen } from './class/UIElements.js';
 
 let DEBUG = {
     boundingBoxes: false,
-    showInfo: true
+    showInfo: true,
+    editVars: true
 }
+
+// TODO use this
+// export const LAYERBOUNDS = {
+//     BG:0,
+//     FG:100,
+//     ITEM:200,
+//     UI:500
+// }
 
 let version;
 
@@ -125,7 +134,7 @@ export class Drop extends UIElement {
             this.top += this.targetDirection[1] * (this.mag / 3) * fElapsedTime;
         }
 
-        if (this.left > cnv.width || this.top > cnv.height || this.left < 0 || this.top < 0) this.destroy();
+        if (this.left > cnv.width || this.top > cnv.height || this.left < 0 || this.top < 0) this.removeNextDraw = true;
     }
 }
 
@@ -149,6 +158,12 @@ export class Coin extends Drop {
 
 export class ItemDrop extends Drop {
     level;
+
+    constructor(opts: IDropOptions & { level?: number | string }) {
+        super(opts);
+
+        this.level = opts.level;
+    }
 
     destroy() {
         super.destroy();
@@ -187,16 +202,15 @@ export let itemManifest = {
     },
 }
 
-let levelManifest = {
+export let levelManifest = {
     1: {
         rewards: {
-            coin: 15,
-            antifog: 10
+            'poop-3': 10
         }
     }
 }
 
-export const getXpBoundaryForLevel = level => {
+export const xpBoundaryForLevel = level => {
     return 100 * level * (level / 2);
 }
 
@@ -220,7 +234,9 @@ export const addXp = n => {
     xp += n;
     let nextLvl = xpToCurrentLevel(xp);
 
-    if (prevLvl < nextLvl) levelUp();
+    if (prevLvl < nextLvl) {
+        levelUp();
+    }
     saveGame();
 }
 
@@ -229,11 +245,15 @@ const levelUp = () => {
 
     if (!levelManifest[lvl]) {
         console.error('Rewards not implemented for level ' + lvl);
-        return;
-    } else {
-        // create reward screen
-        console.log('Reward screen not implemented!', levelManifest[lvl]);
     }
+    // create reward screen
+    UIElements.push(new LevelUpScreen);
+    // console.log('Reward screen not implemented!', levelManifest[lvl]);
+}
+
+if (DEBUG.editVars) {
+    globalThis.addXp = addXp;
+    globalThis.xpToCurrentLevel = xpToCurrentLevel;
 }
 
 export interface IActorOptions {
@@ -530,7 +550,7 @@ const createNewGame = () => {
 
             let itemSize = 5;//Math.floor(1 + Math.random() * 5);
 
-            let item = Math.random()>0.5?'poop':'gold_poop';
+            let item = Math.random() > 0.5 ? 'poop' : 'gold_poop';
 
             if (noiseGen(i / noiseScale, j / noiseScale, 100) > 0) {
                 let tile;
@@ -614,6 +634,8 @@ const drawGame = () => {
     }
 
     // UI
+    UIElements.forEach(el=>{if(el.removeNextDraw) el.destroy()});
+
     UIElements.sort((a, b) => a.layer - b.layer);
     for (let el of UIElements) {
         el.draw(ctx);
@@ -643,8 +665,7 @@ const rAFLoop = (t: DOMHighResTimeStamp) => {
 
     avgFps = avg(prevFPSs);
 
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, cnv.width, cnv.height);
+
 
     switch (state) {
         case 'playing':
@@ -652,6 +673,9 @@ const rAFLoop = (t: DOMHighResTimeStamp) => {
 
 
     }
+
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, cnv.width, cnv.height);
     drawGame();
 
     handleInput();

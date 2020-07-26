@@ -1,4 +1,4 @@
-import { viewScale, cnv, xpToCurrentLevel, xp, getXpBoundaryForLevel, coins, startGame, inventory, UIElements, sprites, pickup, tileGrid, extraActors } from "../main.js";
+import { viewScale, cnv, xpToCurrentLevel, xp, coins, startGame, inventory, UIElements, sprites, pickup, tileGrid, extraActors, levelManifest, xpBoundaryForLevel, ItemDrop, Coin } from "../main.js";
 import { Sprite } from "./Sprite.js";
 import { Item } from "./Item.js";
 
@@ -15,6 +15,8 @@ export class UIElement {
     sprite: Sprite;
     centerX: boolean;
     centerY: boolean;
+
+    removeNextDraw = false;
 
     constructor(opts: IUIOptions) {
         for (let o in opts) {
@@ -54,7 +56,11 @@ export class UIElement {
     }
 
     get img() {
-        return this.sprite.cnv;
+        try {
+            return this.sprite.cnv;
+        } catch (e) {
+            console.error('sprite_not_found : ' + this.type, e)
+        }
     }
 
     get x() {
@@ -87,7 +93,7 @@ export interface IUIOptions {
 
 const openScreen = (screen: Screen) => {
     let el = screenIsOpen();
-    if (el) el.destroy();
+    if (el) el.removeNextDraw = true;
     UIElements.push(screen);
 }
 
@@ -144,8 +150,8 @@ export class XPBall extends UIElement {
         ctx.fillStyle = 'white';
         ctx.fillText(level.toString(), this.left + 26, textOffsetTop);
 
-        let levelBound = getXpBoundaryForLevel(level);
-        let nextLevelBound = getXpBoundaryForLevel(level + 1);
+        let levelBound = xpBoundaryForLevel(level);
+        let nextLevelBound = xpBoundaryForLevel(level + 1);
 
         let progress = (xp - levelBound) / (nextLevelBound - levelBound);
 
@@ -209,7 +215,7 @@ class CloseButton extends UIElement {
     }
 
     act() {
-        this.target.destroy();
+        this.target.removeNextDraw = true;
     }
 }
 
@@ -384,7 +390,7 @@ class InventoryItem extends UIElement {
         // follow touch with item
         // close inventory
 
-        this.parentScreen.destroy();
+        this.parentScreen.removeNextDraw = true;
     }
 
     draw(ctx: CanvasRenderingContext2D) {
@@ -393,7 +399,11 @@ class InventoryItem extends UIElement {
         ctx.fillStyle = 'rgba(0,0,0,0.5)';
 
         ctx.fillRect(x, y, this.width, this.height);
-        ctx.drawImage(sprites[this.type].cnv, x, y);
+        try {
+            ctx.drawImage(sprites[this.type].cnv, x, y);
+        } catch (e) {
+            console.error('sprite_not_found: ' + this.type, e);
+        }
 
         ctx.font = '14px monospace';
         ctx.fillStyle = 'white';
@@ -414,4 +424,126 @@ class RewardScreen extends Screen {
     color1 = 'lightblue';
     color2 = 'orange';
     type = 'screen-rewards';
+}
+
+export class LevelUpScreen extends Screen {
+    title = 'Level Up!';
+    color1 = '#ffc800';
+    color2 = '#9500ff';
+    type = 'screen-levelup';
+
+    rewards;
+
+    populate() {
+        let lvl = xpToCurrentLevel(xp);
+        this.rewards = levelManifest[lvl]?.rewards || {};
+
+        this.rewards.coin = lvl * lvl * 10;
+
+        let n = 0;
+        let itemSize = 32;
+        let margin = 10;
+        let leftPad = 100;
+        let topPad = 100;
+
+        for (let r in this.rewards) {
+            console.log('adding ', r)
+            //TODO different maths to center all items
+            let maxCols = Math.floor(1 / ((itemSize + margin) / (this.width - margin * 2 - leftPad * 2)));
+
+            let col = (n % maxCols);
+
+            let row = Math.floor(n / maxCols);
+
+            let x = this.left + col * (itemSize + margin) + margin + leftPad;
+            let y = this.top + row * (itemSize + margin) + margin + topPad;
+
+            n++;
+
+            let newItem = new RewardItem({
+                left: x,
+                top: y,
+                type: r,
+                count: this.rewards[r],
+                sprite: sprites[r],
+                height: 32,
+                width: 32,
+                layer: this.layer + 9,
+            }, this)
+
+            UIElements.push(newItem);
+            this.children.push(newItem);
+        }
+    }
+}
+
+class RewardItem extends UIElement {
+    parentScreen: RewardScreen;
+    count: number;
+
+    constructor(opts: { count: number } & IUIOptions, parentScreen: RewardScreen) {
+        super(opts);
+
+        this.parentScreen = parentScreen;
+    }
+
+    destroy() {
+        super.destroy();
+
+        for (let i = 0; i < this.count; i++) {
+            let newDrop;
+            let dropLeft = this.left + this.width / 2;
+            let dropTop = this.top + this.height / 2;
+
+
+            switch (this.type) {
+                case 'coin':
+                    newDrop = new Coin({
+                        height: 8,
+                        layer: this.layer + 1,
+                        sprite: sprites[this.type],
+                        targetPos: [cnv.width, 0],
+                        type: this.type,
+                        value: 1,
+                        width: 8,
+                        left: dropLeft,
+                        top: dropTop
+                    })
+                    break;
+                default:
+                    newDrop = new ItemDrop({
+                        height: 8,
+                        layer: this.layer + 1,
+                        sprite: sprites[this.type],
+                        targetPos: [cnv.width / 2, 0],
+                        type: this.type.split('-')[0],
+                        level: this.type.split('-')[1],
+                        value: 1,
+                        width: 8,
+                        left: dropLeft,
+                        top: dropTop
+                    })
+                    break;
+            }
+
+            // newDrop.draw = ()=>'AAAAAA';
+
+            UIElements.push(newDrop);
+        }
+    }
+
+    draw(ctx: CanvasRenderingContext2D) {
+        let x = this.left;
+        let y = this.top;
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+
+        ctx.fillRect(x, y, this.width, this.height);
+        ctx.drawImage(sprites[this.type].cnv, x, y);
+
+        let fontSize = 14;
+        ctx.font = fontSize + 'px monospace';
+        ctx.fillStyle = 'white';
+
+        ctx.fillText(this.count.toString(), x, y + this.height);
+    }
 }
