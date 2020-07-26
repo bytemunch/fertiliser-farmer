@@ -110,16 +110,16 @@ export class Drop extends UIElement {
     }
 
     draw(ctx: CanvasRenderingContext2D) {
-        this.age+=fElapsedTime*5;
+        this.age += fElapsedTime * 5;
         ctx.drawImage(this.img, this.left, this.top, this.img.width, this.img.height);
         if (this.age < 10) {
-            this.top += this.directionVector[1] * fElapsedTime*5;
+            this.top += this.directionVector[1] * fElapsedTime * 5;
         } else if (this.age < 20) {
-            this.top -= this.directionVector[1] * fElapsedTime*5;
+            this.top -= this.directionVector[1] * fElapsedTime * 5;
         }
 
         if (this.age < 20) {
-            this.left += this.directionVector[0] * fElapsedTime*5;
+            this.left += this.directionVector[0] * fElapsedTime * 5;
         } else {
             this.left += this.targetDirection[0] * (this.mag / 3) * fElapsedTime;
             this.top += this.targetDirection[1] * (this.mag / 3) * fElapsedTime;
@@ -176,7 +176,15 @@ export let itemManifest = {
             [`poop-1`]: [1, 3],
             xp: [50, 50]
         }
-    }
+    },
+    'gold_poop': {
+        maxLevel: 5,
+        dropTable: {
+            coin: [30, 50],
+            [`gold_poop-1`]: [1, 3],
+            xp: [150, 150]
+        }
+    },
 }
 
 let levelManifest = {
@@ -220,7 +228,7 @@ const levelUp = () => {
     let lvl = xpToCurrentLevel(xp);
 
     if (!levelManifest[lvl]) {
-        console.error('Rewards not implemented for level '+lvl);
+        console.error('Rewards not implemented for level ' + lvl);
         return;
     } else {
         // create reward screen
@@ -271,10 +279,22 @@ const loadSprites = () => {
     sprites.fog = new Sprite('./img/tiles/fog.png', 64, 96);
     loadPromises.push(sprites.fog.ready);
 
-    for (let i = 1; i <= 5; i++) {
-        sprites[`poop-${i}`] = new Sprite(`./img/items/poop-${i}.png`);
-        loadPromises.push(sprites[`poop-${i}`].ready);
+
+    for (let i in itemManifest) {
+        for (let j = 1; j <= itemManifest[i].maxLevel; j++) {
+            sprites[`${i}-${j}`] = new Sprite(`./img/items/${i}/${i}-${j}.png`);
+            loadPromises.push(sprites[`${i}-${j}`].ready);
+        }
     }
+    // for (let i = 1; i <= 5; i++) {
+    //     sprites[`poop-${i}`] = new Sprite(`./img/items/poop/poop-${i}.png`);
+    //     loadPromises.push(sprites[`poop-${i}`].ready);
+    // }
+
+    // for (let i = 1; i <= 5; i++) {
+    //     sprites[`gold_poop-${i}`] = new Sprite(`./img/items/gold_poop/gold_poop-${i}.png`);
+    //     loadPromises.push(sprites[`poop-${i}`].ready);
+    // }
 
     sprites.bank = new Sprite(`./img/graphics/bank.png`, 64, 64);
     loadPromises.push(sprites.bank.ready);
@@ -510,6 +530,8 @@ const createNewGame = () => {
 
             let itemSize = 5;//Math.floor(1 + Math.random() * 5);
 
+            let item = Math.random()>0.5?'poop':'gold_poop';
+
             if (noiseGen(i / noiseScale, j / noiseScale, 100) > 0) {
                 let tile;
 
@@ -535,8 +557,8 @@ const createNewGame = () => {
                     contents: Math.random() < 0.1 ? new Item({
                         gridPosition: { gridX: i, gridY: j },
                         layer: layer + 10,
-                        sprite: sprites[`poop-${itemSize}`],
-                        type: `poop`,
+                        sprite: sprites[`${item}-${itemSize}`],
+                        type: item,
                         level: itemSize
                     }) : null,
                 }
@@ -721,9 +743,8 @@ export const pickup = (dragged, callback?) => {
 
             tile.draggedOver = false;
 
-
             if (tile.collides(x, y)) {
-                if (tile.contents && tile.contents.type !== dragged.type && tile.contents.level !== dragged.level) continue;
+                if (tile.contents && (tile.contents.type !== dragged.type || tile.contents.level !== dragged.level)) continue;
 
                 const moveItem = () => {
                     tileGrid[tile.gridX][tile.gridY].contents = dragged;
