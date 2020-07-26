@@ -48,19 +48,8 @@ export class Item extends WorldActor {
     }
 
     getConnectedItemsOfSameTypeAndLevel(targetType, targetLevel) {
-        let connected = [];
-        if (this.gridY % 2) {
-            connected.push(tileGrid[this.gridX - 1][this.gridY - 1].contents,
-                tileGrid[this.gridX + 0][this.gridY - 1].contents,
-                tileGrid[this.gridX + 0][this.gridY + 1].contents,
-                tileGrid[this.gridX - 1][this.gridY + 1].contents);
-        }
-        else {
-            connected.push(tileGrid[this.gridX - 0][this.gridY - 1].contents,
-                tileGrid[this.gridX + 1][this.gridY - 1].contents,
-                tileGrid[this.gridX + 1][this.gridY + 1].contents,
-                tileGrid[this.gridX - 0][this.gridY + 1].contents);
-        }
+        let tile = tileGrid[this.gridX][this.gridY].tile;
+        let connected = [tile.ne.contents, tile.nw.contents, tile.sw.contents, tile.se.contents];
 
         return connected.filter(item => item && item.type == targetType && item.level == targetLevel);
     }

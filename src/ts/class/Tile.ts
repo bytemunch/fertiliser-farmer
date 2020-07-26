@@ -3,7 +3,7 @@ import { IActorOptions, tileGrid, viewScale, sprites } from '../main.js';
 
 export const newTileFromJSON = (data) => {
     return new Tile({
-        gridPosition: {gridX: data.gridX, gridY: data.gridY},
+        gridPosition: { gridX: data.gridX, gridY: data.gridY },
         layer: data.layer,
         sprite: sprites[data.type],
         type: data.type,
@@ -35,6 +35,22 @@ export class Tile extends WorldActor {
 
     get contents() {
         return tileGrid[this.gridX][this.gridY].contents;
+    }
+
+    get ne() {
+        return (this.gridY % 2) ? tileGrid[this.gridX - 1][this.gridY - 1] : tileGrid[this.gridX][this.gridY - 1];
+    }
+
+    get nw() {
+        return (this.gridY % 2) ? tileGrid[this.gridX][this.gridY - 1] : tileGrid[this.gridX + 1][this.gridY - 1];
+    }
+
+    get sw() {
+        return (this.gridY % 2) ? tileGrid[this.gridX][this.gridY + 1] : tileGrid[this.gridX + 1][this.gridY + 1];
+    }
+
+    get se() {
+        return (this.gridY % 2) ? tileGrid[this.gridX - 1][this.gridY + 1] : tileGrid[this.gridX][this.gridY + 1];
     }
 
     draw(ctx, cam) {
