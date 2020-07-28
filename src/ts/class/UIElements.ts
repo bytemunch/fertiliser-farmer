@@ -1,4 +1,4 @@
-import { viewScale, cnv, xpToCurrentLevel, xp, coins, startGame, inventory, UIElements, sprites, pickup, tileGrid, extraActors, levelManifest, xpBoundaryForLevel, ItemDrop, Coin } from "../main.js";
+import { viewScale, cnv, xpToCurrentLevel, xp, coins, startGame, inventory, UIElements, sprites, pickup, tileGrid, extraActors, levelManifest, xpBoundaryForLevel, ItemDrop, Coin, tool, tools, nextTool } from "../main.js";
 import { Sprite } from "./Sprite.js";
 import { Item } from "./Item.js";
 
@@ -100,6 +100,18 @@ const openScreen = (screen: Screen) => {
 const screenIsOpen = () => {
     for (let el of UIElements) {
         if (el.type.split('-')[0] == 'screen') return el;
+    }
+}
+
+export class ToolSelector extends UIElement {
+    interactable = true;
+
+    act() {
+        nextTool();
+    }
+
+    draw(ctx: CanvasRenderingContext2D) {
+        ctx.drawImage(this.img, this.left, this.top, this.width * viewScale, this.height * viewScale);
     }
 }
 
@@ -376,7 +388,7 @@ class InventoryItem extends UIElement {
             layer: 500,
             sprite: sprites[this.type],
             type: this.type.split('-')[0],
-            level: Number(this.type.split('-')[1])
+            level: Number(this.type.split('-')[1]),
         })
 
         extraActors.push(item);

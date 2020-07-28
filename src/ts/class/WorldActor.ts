@@ -1,5 +1,5 @@
 import { Sprite } from './Sprite.js';
-import { IActorOptions, viewScale, sprites } from '../main.js';
+import { IActorOptions, viewScale, sprites, DEBUG } from '../main.js';
 import { Camera } from "./Camera.js";
 export abstract class WorldActor {
     _x: number | false;
@@ -31,7 +31,6 @@ export abstract class WorldActor {
         this.layer = opts.layer;
 
         this.sprite = opts.sprite;
-
     }
 
     get img() {
@@ -70,10 +69,10 @@ export abstract class WorldActor {
             ctx.drawImage(this.img, 0, 0, this.img.width, this.img.height, this.x - camera.x, this.y - camera.y, this.img.width, this.img.height);
             return true;
         }
+        if (DEBUG.boundingBoxes) ctx.strokeRect(this.x - camera.x, this.y - camera.y, this.width*viewScale, this.height*viewScale);
 
         return false;
 
-        //if (DEBUG.boundingBoxes) ctx.strokeRect(this.x - camera.x, this.y - camera.y, this.width*viewScale, this.height*viewScale);
     }
 
     update() {
