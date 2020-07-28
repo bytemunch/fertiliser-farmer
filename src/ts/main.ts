@@ -28,7 +28,7 @@ let version;
 
 export let cnv = document.createElement('canvas');
 cnv.style.imageRendering = 'pixelated';
-let ctx = cnv.getContext('2d');
+let ctx = cnv.getContext('2d',{alpha:false});
 ctx.imageSmoothingEnabled = false;
 
 window.addEventListener('resize', () => {
@@ -306,15 +306,6 @@ const loadSprites = () => {
             loadPromises.push(sprites[`${i}-${j}`].ready);
         }
     }
-    // for (let i = 1; i <= 5; i++) {
-    //     sprites[`poop-${i}`] = new Sprite(`./img/items/poop/poop-${i}.png`);
-    //     loadPromises.push(sprites[`poop-${i}`].ready);
-    // }
-
-    // for (let i = 1; i <= 5; i++) {
-    //     sprites[`gold_poop-${i}`] = new Sprite(`./img/items/gold_poop/gold_poop-${i}.png`);
-    //     loadPromises.push(sprites[`poop-${i}`].ready);
-    // }
 
     sprites.bank = new Sprite(`./img/graphics/bank.png`, 64, 64);
     loadPromises.push(sprites.bank.ready);
@@ -605,7 +596,7 @@ let lastT = 0;
 let frameTime = 0;
 let fElapsedTime = 0;
 
-let frameCount = 0;
+export let frameCount = 0;
 
 let prevFPSs = [];
 
@@ -629,8 +620,9 @@ const drawGame = () => {
 
     flatArray.sort((a, b) => a.layer - b.layer);
 
+    let drawnObjs = 0;
     for (let actor of flatArray) {
-        (<WorldActor>actor).draw(ctx, camera);
+        if ((<WorldActor>actor).draw(ctx, camera)) drawnObjs++;
     }
 
     // UI
@@ -640,6 +632,8 @@ const drawGame = () => {
     for (let el of UIElements) {
         el.draw(ctx);
     }
+
+    if (frameCount % 100 == 0) console.log(flatArray.length, UIElements.length, drawnObjs + UIElements.length)
 }
 
 const drawDebug = () => {
@@ -665,17 +659,16 @@ const rAFLoop = (t: DOMHighResTimeStamp) => {
 
     avgFps = avg(prevFPSs);
 
-
+    for (let s in sprites) {
+        sprites[s].draw();
+    }
 
     switch (state) {
         case 'playing':
             break;
-
-
     }
 
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, cnv.width, cnv.height);
+    ctx.clearRect(0, 0, cnv.width, cnv.height);
     drawGame();
 
     handleInput();

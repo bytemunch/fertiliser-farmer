@@ -1,9 +1,8 @@
-import { viewScale } from "../main.js";
+import { viewScale, frameCount } from "../main.js";
 
 export class Sprite {
-    cnv = document.createElement('canvas');
-
-    ctx = this.cnv.getContext('2d');
+    cnv: OffscreenCanvas;
+    ctx;
     sheetWidth: number;
     ready: Promise<any>;
 
@@ -12,14 +11,16 @@ export class Sprite {
 
     animate: string = 'loop';
     animationState: number = 0;
-    frameRate: number = 10;
+    frameRate: number = 30;
 
     img: HTMLImageElement;
 
-    constructor(src, w = 32, h = 32) {
-        this.ctx.imageSmoothingEnabled = false;
+    drawFinished = false;
 
-        document.body.appendChild(this.cnv);
+    constructor(src, w = 32, h = 32) {
+        this.cnv = new OffscreenCanvas(w, h);
+        this.ctx = this.cnv.getContext('2d');
+        this.ctx.imageSmoothingEnabled = false;
 
         this.spriteWidth = w;
         this.spriteHeight = h;
@@ -33,7 +34,7 @@ export class Sprite {
 
                 this.sheetWidth = this.img.width;
 
-                this.drawSprite();
+                this.draw();
                 res();
             });
         });
@@ -41,31 +42,27 @@ export class Sprite {
         this.img.src = src;
     }
 
-    reDraw() {
-        this.drawSprite();
-    }
-
-    drawSprite() {
+    draw() {
         switch (this.animate) {
             case 'loop':
                 // initial draw
-                this.ctx.drawImage(this.img, 0, 0, this.spriteWidth, this.spriteHeight, 0, 0, this.cnv.width, this.cnv.height);
+                // this.ctx.drawImage(this.img, 0, 0, this.spriteWidth, this.spriteHeight, 0, 0, this.cnv.width, this.cnv.height);
 
                 // animate
-                setInterval(() => {
+                if (frameCount % this.frameRate == 0) {
                     this.ctx.clearRect(0, 0, this.cnv.width, this.cnv.height);
                     this.ctx.drawImage(this.img, this.animationState, 0, this.spriteWidth, this.spriteHeight, 0, 0, this.cnv.width, this.cnv.height);
                     this.animationState += this.spriteWidth;
                     if (this.animationState >= this.sheetWidth)
                         this.animationState = 0;
-                }, (1 / this.frameRate) * 1000);
+                }
+
                 break;
             default:
+                if (this.drawFinished) return;
+                this.ctx.clearRect(0, 0, this.cnv.width, this.cnv.height);
                 this.ctx.drawImage(this.img, this.animationState * this.spriteWidth, 0, this.spriteWidth, this.spriteHeight, 0, 0, this.cnv.width, this.cnv.height);
-                setInterval(() => {
-                    this.ctx.clearRect(0, 0, this.cnv.width, this.cnv.height);
-                    this.ctx.drawImage(this.img, this.animationState*this.spriteWidth, 0, this.spriteWidth, this.spriteHeight, 0, 0, this.cnv.width, this.cnv.height);
-                }, (1 / this.frameRate) * 1000);
+                this.drawFinished = true;
                 break;
         }
     }
