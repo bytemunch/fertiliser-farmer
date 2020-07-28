@@ -457,6 +457,9 @@ export class LevelUpScreen extends Screen {
 
         this.rewards.coin = lvl * lvl * 10;
 
+        if (lvl % 3 == 0) this.rewards.antifog = lvl * 5;
+
+
         let n = 0;
         let itemSize = 32;
         let margin = 10;
@@ -539,7 +542,7 @@ class RewardItem extends UIElement {
                         width: 8,
                         left: dropLeft,
                         top: dropTop,
-                        finish: ()=>tools.antifog.addUses(1)
+                        finish: () => tools.antifog.addUses(1)
                     })
                     break;
                 default:
@@ -554,7 +557,7 @@ class RewardItem extends UIElement {
                         width: 8,
                         left: dropLeft,
                         top: dropTop,
-                        finish: ()=>inventory.addByTypeAndLevel(this.type.split('-')[0], this.type.split('-')[1])
+                        finish: () => inventory.addByTypeAndLevel(this.type.split('-')[0], this.type.split('-')[1])
 
                     })
                     break;
