@@ -14,6 +14,7 @@ export const newTileFromJSON = (data) => {
 export class Tile extends WorldActor {
     droppable = false;
     draggedOver = false;
+    baseClass = 'tile';
     constructor(opts?: IActorOptions) {
         super(opts);
 
@@ -60,7 +61,7 @@ export class Tile extends WorldActor {
         return super.draw(ctx, cam);
     }
 
-    collides(x, y) {
+    dragCollides(x, y) {
         return (x > this.x + this.width / 3 && y > this.y - this.height / 3 && x < this.x + (this.width * (2 / 3)) * viewScale && y < this.y + (this.height - this.height / 3) * viewScale);
     }
 }

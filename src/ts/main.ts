@@ -4,21 +4,22 @@ import { WorldActor } from './class/WorldActor.js';
 import { Tile, newTileFromJSON } from './class/Tile.js';
 import { Item, newItemFromJSON } from './class/Item.js';
 import { Camera } from './class/Camera.js';
-import { IUIOptions, UIElement, Bank, CoinDisplay, XPDisplay, XPBall, PlayButton, DrawnSprite, InventoryButton, LevelUpScreen } from './class/UIElements.js';
+import { IUIOptions, UIElement, Bank, CoinDisplay, XPDisplay, XPBall, PlayButton, DrawnSprite, InventoryButton, LevelUpScreen, ToolSelector } from './class/UIElements.js';
+import { Animal, Chicken, newAnimalFromJSON } from './class/Animal.js';
 
-let DEBUG = {
-    boundingBoxes: false,
+export let DEBUG = {
+    boundingBoxes: true,
     showInfo: true,
     editVars: true
 }
 
 // TODO use this
-// export const LAYERBOUNDS = {
-//     BG:0,
-//     FG:100,
-//     ITEM:200,
-//     UI:500
-// }
+export const LAYERS = {
+    BG: 0,
+    FG: 100,
+    ITEM: 200,
+    UI: 500
+}
 
 let version;
 
@@ -240,6 +241,96 @@ export const addXp = n => {
     saveGame();
 }
 
+class Tool {
+    img: Sprite;
+    uses: number = 0;
+    type: string;
+
+    act(x, y) {
+        if (this.uses <= 0) {
+            this.uses = 0;
+            return false;
+        }
+        this.uses--;
+        return true;
+    }
+
+    addUses(n) {
+        this.uses += n;
+    }
+}
+
+class HandTool extends Tool {
+    type = 'hand';
+    uses = Infinity;
+
+    act(x,y) {
+        if (!super.act(x,y)) return false;
+        if (animalTouchListeners(x, y)) return true;
+        if (itemTouchListeners(x, y)) return true;
+        return false;
+    }
+}
+
+class AntiFog extends Tool {
+    type = 'antifog';
+    uses = Infinity;
+
+    act(x, y) {
+        // decrement uses
+        if (!super.act(x,y)) return false;
+        // if fog is at x,y
+        for (let tile of flattenArray(tileGrid)) {
+        // remove fog
+            if (tile.baseClass != 'tile') continue;
+            if (tile.type != 'fog') continue;
+            if (tile.collides(x,y)) {
+                tileGrid[tile.gridX][tile.gridY].tile = new Tile({
+                    gridPosition: { gridX: tile.gridX, gridY: tile.gridY },
+                    layer: tile.layer,
+                    sprite: sprites.grass,
+                    droppable: true,
+                    type: 'grass',
+                });
+                return true;
+            }
+        }
+
+        // re-add use as we havent actually cleared
+        this.addUses(1);
+
+        return false;
+    }
+}
+
+export const tools = {
+    antifog: new AntiFog,
+    hand: new HandTool,
+}
+
+export let tool = 'hand';
+
+export const changeTool = (toolName) => {
+    tool = toolName;
+}
+
+export const nextTool = () => {
+    let tIDs = Object.keys(tools);
+    let count = tIDs.length;
+    let cIdx = tIDs.indexOf(tool);
+
+    if (cIdx >= count-1) {
+        tool=tIDs[0];
+    } else {
+        tool=tIDs[cIdx+1];
+    }
+
+    console.log('tool: ',tool);
+}
+
+// TODO debug
+tool = 'antifog';
+
 const levelUp = () => {
     let lvl = xpToCurrentLevel(xp);
 
@@ -254,6 +345,9 @@ const levelUp = () => {
 if (DEBUG.editVars) {
     globalThis.addXp = addXp;
     globalThis.xpToCurrentLevel = xpToCurrentLevel;
+    globalThis.addChickenAtPos = pos => {
+        animals.push(new Chicken(pos));
+    }
 }
 
 export interface IActorOptions {
@@ -307,6 +401,8 @@ const loadSprites = () => {
         }
     }
 
+    sprites['animal-chicken'] = new Sprite('./img/animals/chicken.png', 32, 32);
+
     sprites.bank = new Sprite(`./img/graphics/bank.png`, 64, 64);
     loadPromises.push(sprites.bank.ready);
 
@@ -344,7 +440,7 @@ const startLoop = () => {
 
 let saving;
 
-const saveGame = () => {
+export const saveGame = (force?) => {
 
     clearTimeout(saving);
 
@@ -365,11 +461,13 @@ const saveGame = () => {
             xp: xp,
             tileGrid: saveData,
             inventory: inventory.toJSON(),
+            animals: animals,
             expandableSpaceHere: true
         }
 
         localStorage.setItem('save', JSON.stringify(fullState));
-    }, 1000);
+        console.info('Game saved!');
+    }, force ? 0 : 1000);
 }
 
 
@@ -379,6 +477,10 @@ const loadGame = () => {
     coins = saveData.coins;
     xp = saveData.xp;
     inventory.contents = saveData.inventory || {};
+
+    for (let animal of saveData.animals) {
+        animals.push(newAnimalFromJSON(animal))
+    }
 
     for (let i = 0; i < saveData.tileGrid.length; i++) {
         tileGrid[i] = [];
@@ -400,6 +502,16 @@ const addGameUI = () => {
         height: 64,
         layer: 2,
         type: 'bank',
+        sprite: sprites.bank
+    }))
+
+    UIElements.push(new ToolSelector({
+        left: 0,
+        top: cnv.height - 64,
+        width: 64,
+        height: 64,
+        layer: 2,
+        type: 'tool_select',
         sprite: sprites.bank
     }))
 
@@ -512,6 +624,7 @@ const createNewGame = () => {
     coins = 0;
     xp = 0;
     inventory = new Inventory;
+    animals = [];
 
     for (let i = 0; i < worldWidth; i++) {
         for (let j = 0; j < worldHeight; j++) {
@@ -527,14 +640,15 @@ const createNewGame = () => {
         }
     }
 
-    let waterBorder = 1;
+    let waterHBorder = 1;
+    let waterVBorder = 6;
 
     let seed = Math.floor(Math.random() * 1234567);
 
     const noiseGen = makeNoise3D(seed);
 
-    for (let i = waterBorder; i < worldWidth - waterBorder; i++) {
-        for (let j = waterBorder * 2; j < worldHeight - waterBorder * 4; j++) {
+    for (let i = waterHBorder; i < worldWidth - waterHBorder; i++) {
+        for (let j = waterVBorder; j < worldHeight - waterVBorder; j++) {
             let layer = 1;
 
             const noiseScale = 20;
@@ -580,7 +694,7 @@ const createNewGame = () => {
     saveGame();
 }
 
-const flattenArray = array2D => {
+export const flattenArray = array2D => {
     let flatArray = [];
 
     array2D.forEach(row => row.forEach(gridSq => {
@@ -594,7 +708,7 @@ const flattenArray = array2D => {
 let fps = 0;
 let lastT = 0;
 let frameTime = 0;
-let fElapsedTime = 0;
+export let fElapsedTime = 0;
 
 export let frameCount = 0;
 
@@ -611,10 +725,12 @@ const avg = (arr) => {
     return rt / arr.length;
 }
 
+export let animals: Animal[] = [];
+
 const drawGame = () => {
     let flatArray = flattenArray(tileGrid);
 
-    flatArray = flatArray.concat(extraActors);
+    flatArray = flatArray.concat(extraActors).concat(animals);
 
     flatArray.sort((a, b) => a.y - b.y);
 
@@ -622,11 +738,12 @@ const drawGame = () => {
 
     let drawnObjs = 0;
     for (let actor of flatArray) {
-        if ((<WorldActor>actor).draw(ctx, camera)) drawnObjs++;
+        (<WorldActor>actor).update();
+        (<WorldActor>actor).draw(ctx, camera);
     }
 
     // UI
-    UIElements.forEach(el=>{if(el.removeNextDraw) el.destroy()});
+    UIElements.forEach(el => { if (el.removeNextDraw) el.destroy() });
 
     UIElements.sort((a, b) => a.layer - b.layer);
     for (let el of UIElements) {
@@ -639,11 +756,21 @@ const drawGame = () => {
 const drawDebug = () => {
     //DEBUG
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
     ctx.fillRect(0, cnv.height - 20, cnv.width, 20);
     ctx.fillStyle = 'white';
     ctx.font = '16px monospace';
     ctx.fillText('FPS: ' + avgFps.toFixed(2), 10, cnv.height - 4);
     ctx.fillText('rev' + version, cnv.width - 60, cnv.height - 4);
+    ctx.fillText(`[${((camera.x + camera.viewWidth / 2) - 32).toPrecision(4)},${((camera.y + camera.viewHeight / 2) - 48).toPrecision(4)}]`, cnv.width / 2, cnv.height - 4);
+    // Crosshair
+    ctx.beginPath();
+    ctx.moveTo(cnv.width / 2, 0);
+    ctx.lineTo(cnv.width / 2, cnv.height - 20);
+    ctx.moveTo(0, cnv.height / 2);
+    ctx.lineTo(cnv.width, cnv.height / 2);
+    ctx.stroke();
+    ctx.closePath();
 }
 
 const rAFLoop = (t: DOMHighResTimeStamp) => {
@@ -668,7 +795,9 @@ const rAFLoop = (t: DOMHighResTimeStamp) => {
             break;
     }
 
-    ctx.clearRect(0, 0, cnv.width, cnv.height);
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, cnv.width, cnv.height);
+
     drawGame();
 
     handleInput();
@@ -743,7 +872,7 @@ export const pickup = (dragged, callback?) => {
 
             tile.draggedOver = false;
 
-            if (tile.collides(x, y)) {
+            if (tile.dragCollides(x, y)) {
                 tile.draggedOver = true;
             }
         }
@@ -760,7 +889,7 @@ export const pickup = (dragged, callback?) => {
 
             tile.draggedOver = false;
 
-            if (tile.collides(x, y)) {
+            if (tile.dragCollides(x, y)) {
                 if (tile.contents && (tile.contents.type !== dragged.type || tile.contents.level !== dragged.level)) continue;
 
                 const moveItem = () => {
@@ -856,6 +985,11 @@ const uiTouchListeners = (x, y) => {
     return false;
 }
 
+const animalTouchListeners = (x, y) => {
+    console.log('Animal touch listeners not implemented!');
+    return false;
+}
+
 let targetBB = cnv.getBoundingClientRect();
 
 cnv.addEventListener('touchstart', e => {
@@ -869,13 +1003,12 @@ cnv.addEventListener('touchstart', e => {
 
     if (uiTouchListeners(e.touches[0].pageX - targetBB.x, e.touches[0].pageY - targetBB.y)) return;
 
-    if (itemTouchListeners(x, y)) return;
+    if (tools[tool].act(x,y)) return;
 
-    let interactableObjectPressed = false;
+
+
 
     // TODO Loop through array again looking for interactable objects (sorted by layer)
 
-    if (!interactableObjectPressed) {
-        cameraTouchListeners(x, y, targetBB, startX, startY);
-    }
+    cameraTouchListeners(x, y, targetBB, startX, startY);
 })
