@@ -160,15 +160,20 @@ export class Coin extends Drop {
 export class ItemDrop extends Drop {
     level;
 
-    constructor(opts: IDropOptions & { level?: number | string }) {
+    constructor(opts: IDropOptions & { level?: number | string , finish: ()=>void}) {
         super(opts);
 
         this.level = opts.level;
     }
 
+    finish() {
+        // set callback in options
+        console.log('no callback for ',this)
+    }
+
     destroy() {
         super.destroy();
-        inventory.addByTypeAndLevel(this.type, this.level);
+        this.finish();
     }
 }
 
@@ -206,7 +211,7 @@ export let itemManifest = {
 export let levelManifest = {
     1: {
         rewards: {
-            'poop-3': 10
+            'antifog': 10
         }
     }
 }
@@ -249,6 +254,7 @@ class Tool {
     act(x, y) {
         if (this.uses <= 0) {
             this.uses = 0;
+            tool = 'hand';
             return false;
         }
         this.uses--;
@@ -257,6 +263,7 @@ class Tool {
 
     addUses(n) {
         this.uses += n;
+        console.log('use added',n);
     }
 }
 
@@ -274,7 +281,7 @@ class HandTool extends Tool {
 
 class AntiFog extends Tool {
     type = 'antifog';
-    uses = Infinity;
+    uses = 10;
 
     act(x, y) {
         // decrement uses
@@ -324,12 +331,7 @@ export const nextTool = () => {
     } else {
         tool=tIDs[cIdx+1];
     }
-
-    console.log('tool: ',tool);
 }
-
-// TODO debug
-tool = 'antifog';
 
 const levelUp = () => {
     let lvl = xpToCurrentLevel(xp);
@@ -405,6 +407,15 @@ const loadSprites = () => {
 
     sprites.bank = new Sprite(`./img/graphics/bank.png`, 64, 64);
     loadPromises.push(sprites.bank.ready);
+
+    sprites.tool_select = new Sprite(`./img/graphics/tool_select.png`, 64, 64);
+    loadPromises.push(sprites.tool_select.ready);
+
+    sprites.hand = new Sprite(`./img/graphics/hand.png`, 64, 64);
+    loadPromises.push(sprites.hand.ready);
+
+    sprites.antifog = new Sprite(`./img/graphics/antifog.png`, 64, 64);
+    loadPromises.push(sprites.antifog.ready);
 
     sprites.inventory = new Sprite(`./img/graphics/inventory.png`, 64, 64);
     loadPromises.push(sprites.inventory.ready);
@@ -512,7 +523,7 @@ const addGameUI = () => {
         height: 64,
         layer: 2,
         type: 'tool_select',
-        sprite: sprites.bank
+        sprite: sprites.tool_select
     }))
 
     UIElements.push(new InventoryButton({

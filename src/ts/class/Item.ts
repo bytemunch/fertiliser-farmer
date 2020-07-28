@@ -1,5 +1,5 @@
 import { WorldActor } from './WorldActor.js';
-import { IActorOptions, tileGrid, itemManifest, sprites, UIElements, randInRange, camera, dropManifest, Coin, cnv, XPDrop, ItemDrop } from '../main.js';
+import { IActorOptions, tileGrid, itemManifest, sprites, UIElements, randInRange, camera, dropManifest, Coin, cnv, XPDrop, ItemDrop, inventory } from '../main.js';
 
 export const newItemFromJSON = (data) => {
     return new Item({
@@ -110,6 +110,7 @@ export class Item extends WorldActor {
                             sprite: sprites[drop],
                             targetPos: [cnv.width / 2, 0],
                             value: 1,
+                            finish: ()=>inventory.addByTypeAndLevel(drop.split('-')[0], drop.split('-')[1])
                         });
                         droppedItem.level = drop.split('-')[1];
                         UIElements.push(droppedItem);

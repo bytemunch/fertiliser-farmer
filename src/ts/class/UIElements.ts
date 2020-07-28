@@ -112,6 +112,13 @@ export class ToolSelector extends UIElement {
 
     draw(ctx: CanvasRenderingContext2D) {
         ctx.drawImage(this.img, this.left, this.top, this.width * viewScale, this.height * viewScale);
+        ctx.drawImage(sprites[tool].img, this.left + 16, this.top + 16, 32, 32);
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(this.left, this.top - 20, this.width, 20);
+        ctx.font = '16px monospace';
+        ctx.fillStyle = 'white';
+        let textBB = ctx.measureText(tools[tool].uses.toString());
+        ctx.fillText(tools[tool].uses.toString(), this.left + this.width / 2 - textBB.width / 2, this.top - 4);
     }
 }
 
@@ -166,8 +173,6 @@ export class XPBall extends UIElement {
         let nextLevelBound = xpBoundaryForLevel(level + 1);
 
         let progress = (xp - levelBound) / (nextLevelBound - levelBound);
-
-        // console.log(progress);
 
         this.sprite.animationState = Math.floor(progress * 26);
     }
@@ -522,6 +527,21 @@ class RewardItem extends UIElement {
                         top: dropTop
                     })
                     break;
+                case 'antifog':
+                    newDrop = new ItemDrop({
+                        height: 8,
+                        layer: this.layer + 1,
+                        sprite: sprites[this.type],
+                        targetPos: [0, cnv.height],
+                        type: this.type.split('-')[0],
+                        level: this.type.split('-')[1],
+                        value: 1,
+                        width: 8,
+                        left: dropLeft,
+                        top: dropTop,
+                        finish: ()=>tools.antifog.addUses(1)
+                    })
+                    break;
                 default:
                     newDrop = new ItemDrop({
                         height: 8,
@@ -533,7 +553,9 @@ class RewardItem extends UIElement {
                         value: 1,
                         width: 8,
                         left: dropLeft,
-                        top: dropTop
+                        top: dropTop,
+                        finish: ()=>inventory.addByTypeAndLevel(this.type.split('-')[0], this.type.split('-')[1])
+
                     })
                     break;
             }

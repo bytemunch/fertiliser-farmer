@@ -43,6 +43,11 @@ export class Sprite {
     }
 
     draw() {
+        const drawImage = () => {
+            this.ctx.clearRect(0, 0, this.cnv.width, this.cnv.height);
+            this.ctx.drawImage(this.img, this.animationState * this.spriteWidth, 0, this.spriteWidth, this.spriteHeight, 0, 0, this.cnv.width, this.cnv.height);
+        }
+
         switch (this.animate) {
             case 'loop':
                 // initial draw
@@ -58,10 +63,12 @@ export class Sprite {
                 }
 
                 break;
+            case 'stepped':
+                drawImage();
+                break;
             default:
                 if (this.drawFinished) return;
-                this.ctx.clearRect(0, 0, this.cnv.width, this.cnv.height);
-                this.ctx.drawImage(this.img, this.animationState * this.spriteWidth, 0, this.spriteWidth, this.spriteHeight, 0, 0, this.cnv.width, this.cnv.height);
+                drawImage()
                 this.drawFinished = true;
                 break;
         }
