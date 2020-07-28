@@ -5,6 +5,7 @@ import { Tile, newTileFromJSON } from './class/Tile.js';
 import { Item, newItemFromJSON } from './class/Item.js';
 import { Camera } from './class/Camera.js';
 import { IUIOptions, UIElement, Bank, CoinDisplay, XPDisplay, XPBall, PlayButton, DrawnSprite, InventoryButton, LevelUpScreen } from './class/UIElements.js';
+import { Animal } from './class/Animal.js';
 
 let DEBUG = {
     boundingBoxes: false,
@@ -13,12 +14,12 @@ let DEBUG = {
 }
 
 // TODO use this
-// export const LAYERBOUNDS = {
-//     BG:0,
-//     FG:100,
-//     ITEM:200,
-//     UI:500
-// }
+export const LAYERS = {
+    BG: 0,
+    FG: 100,
+    ITEM: 200,
+    UI: 500
+}
 
 let version;
 
@@ -620,21 +621,24 @@ const avg = (arr) => {
     return rt / arr.length;
 }
 
+export let animals: Animal[] = [];
+
 const drawGame = () => {
     let flatArray = flattenArray(tileGrid);
 
-    flatArray = flatArray.concat(extraActors);
+    flatArray = flatArray.concat(extraActors).concat(animals);
 
     flatArray.sort((a, b) => a.y - b.y);
 
     flatArray.sort((a, b) => a.layer - b.layer);
 
     for (let actor of flatArray) {
+        (<WorldActor>actor).update();
         (<WorldActor>actor).draw(ctx, camera);
     }
 
     // UI
-    UIElements.forEach(el=>{if(el.removeNextDraw) el.destroy()});
+    UIElements.forEach(el => { if (el.removeNextDraw) el.destroy() });
 
     UIElements.sort((a, b) => a.layer - b.layer);
     for (let el of UIElements) {

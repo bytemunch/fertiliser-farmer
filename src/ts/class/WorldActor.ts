@@ -76,6 +76,10 @@ export abstract class WorldActor {
         //if (DEBUG.boundingBoxes) ctx.strokeRect(this.x - camera.x, this.y - camera.y, this.width*viewScale, this.height*viewScale);
     }
 
+    update() {
+        
+    }
+
     inView(camera: Camera) {
         return (this.x + camera.xOffset > camera.x && this.x < camera.x + camera.viewWidth
             && this.y + camera.yOffset > camera.y && this.y < camera.y + camera.viewHeight);
