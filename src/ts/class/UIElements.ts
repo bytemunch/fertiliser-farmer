@@ -46,7 +46,8 @@ export class UIElement {
         console.log('Action not implemented!', this);
     }
 
-    draw(ctx) {
+    draw() {
+        let ctx = layers[this.layer].ctx;
         ctx.drawImage(this.img, this.left, this.top, this.width * viewScale, this.height * viewScale);
     }
 
@@ -108,7 +109,9 @@ export class ToolSelector extends UIElement {
         nextTool();
     }
 
-    draw(ctx: CanvasRenderingContext2D) {
+    draw() {
+        let ctx = layers[this.layer].ctx;
+
         ctx.drawImage(this.img, this.left, this.top, this.width * viewScale, this.height * viewScale);
         ctx.drawImage(sprites[tool].img, this.left + 16, this.top + 16, 32, 32);
         ctx.fillStyle = 'rgba(0,0,0,0.5)';
@@ -126,10 +129,6 @@ export class Bank extends UIElement {
     act() {
         if (!screenIsOpen()) openScreen(new BankScreen);
     }
-
-    draw(ctx: CanvasRenderingContext2D) {
-        ctx.drawImage(this.img, this.left, this.top, this.width * viewScale, this.height * viewScale);
-    }
 }
 
 export class InventoryButton extends UIElement {
@@ -137,10 +136,6 @@ export class InventoryButton extends UIElement {
 
     act() {
         if (!screenIsOpen()) openScreen(new InventoryScreen)
-    }
-
-    draw(ctx: CanvasRenderingContext2D) {
-        ctx.drawImage(this.img, this.left, this.top, this.width * viewScale, this.height * viewScale);
     }
 }
 
@@ -151,7 +146,9 @@ export class XPBall extends UIElement {
         if (!screenIsOpen()) openScreen(new RewardScreen);
     }
 
-    draw(ctx: CanvasRenderingContext2D) {
+    draw() {
+        let ctx = layers[this.layer].ctx;
+
         ctx.drawImage(this.img, this.left, this.top, this.width * viewScale, this.height * viewScale);
 
         let level = xpToCurrentLevel(xp);
@@ -177,7 +174,9 @@ export class XPBall extends UIElement {
 }
 
 export class CoinDisplay extends UIElement {
-    draw(ctx: CanvasRenderingContext2D) {
+    draw() {
+        let ctx = layers[this.layer].ctx;
+
         ctx.fillStyle = 'rgba(0,0,0,0.5)';
         ctx.fillRect(this.left, this.top, this.width * viewScale, this.height * viewScale);
 
@@ -190,7 +189,9 @@ export class CoinDisplay extends UIElement {
 }
 
 export class XPDisplay extends UIElement {
-    draw(ctx: CanvasRenderingContext2D) {
+    draw() {
+        let ctx = layers[this.layer].ctx;
+
         ctx.fillStyle = 'rgba(0,0,0,0.5)';
         ctx.fillRect(this.left, this.top, this.width * viewScale, this.height * viewScale);
 
@@ -204,20 +205,10 @@ export class XPDisplay extends UIElement {
     }
 }
 
-export class DrawnSprite extends UIElement {
-    draw(ctx: CanvasRenderingContext2D) {
-        ctx.drawImage(this.img, this.left, this.top, this.width * viewScale, this.height * viewScale);
-    }
-}
-
 export class PlayButton extends UIElement {
     interactable = true;
     act() {
         startGame();
-    }
-
-    draw(ctx: CanvasRenderingContext2D) {
-        ctx.drawImage(this.img, this.left, this.top, this.width * viewScale, this.height * viewScale);
     }
 }
 
@@ -225,10 +216,6 @@ export class MenuButton extends UIElement {
     interactable = true;
     act() {
         openScreen(new MenuScreen);
-    }
-
-    draw(ctx: CanvasRenderingContext2D) {
-        ctx.drawImage(this.img, this.left, this.top, this.width * viewScale, this.height * viewScale);
     }
 }
 
@@ -246,10 +233,6 @@ export class ClearButton extends UIElement {
         localStorage.clear();
         this.sprite = sprites.clearButtonInactive;
         this.interactable = false;
-    }
-
-    draw(ctx: CanvasRenderingContext2D) {
-        ctx.drawImage(this.img, this.left, this.top, this.width * viewScale, this.height * viewScale);
     }
 }
 
@@ -439,7 +422,9 @@ class InventoryItem extends UIElement {
         this.parentScreen.removeNextDraw = true;
     }
 
-    draw(ctx: CanvasRenderingContext2D) {
+    draw() {
+        let ctx = layers[this.layer].ctx;
+
         let x = this.left;
         let y = this.top;
         ctx.fillStyle = 'rgba(0,0,0,0.5)';
@@ -608,13 +593,12 @@ class RewardItem extends UIElement {
                     break;
             }
 
-            // newDrop.draw = ()=>'AAAAAA';
-
             UIElements.push(newDrop);
         }
     }
 
-    draw(ctx: CanvasRenderingContext2D) {
+    draw() {
+        let ctx = layers[this.layer].ctx;
         let x = this.left;
         let y = this.top;
         ctx.fillStyle = 'rgba(0,0,0,0.5)';

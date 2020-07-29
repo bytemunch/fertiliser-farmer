@@ -4,7 +4,7 @@ import { WorldActor } from './class/WorldActor.js';
 import { Tile, newTileFromJSON } from './class/Tile.js';
 import { Item, newItemFromJSON } from './class/Item.js';
 import { Camera } from './class/Camera.js';
-import { IUIOptions, UIElement, Bank, CoinDisplay, XPDisplay, XPBall, PlayButton, DrawnSprite, InventoryButton, LevelUpScreen, ToolSelector, MenuButton } from './class/UIElements.js';
+import { IUIOptions, UIElement, Bank, CoinDisplay, XPDisplay, XPBall, PlayButton, InventoryButton, LevelUpScreen, ToolSelector, MenuButton } from './class/UIElements.js';
 import { Animal, Chicken, newAnimalFromJSON } from './class/Animal.js';
 
 export let DEBUG = {
@@ -128,7 +128,9 @@ export class Drop extends UIElement {
         ]
     }
 
-    draw(ctx: CanvasRenderingContext2D) {
+    draw() {
+        let ctx = layers[this.layer].ctx;
+
         this.age += fElapsedTime * 5;
         ctx.drawImage(this.img, this.left, this.top, this.img.width, this.img.height);
         if (this.age < 10) {
@@ -633,7 +635,7 @@ const createMainMenu = () => {
         type: 'menu'
     }))
 
-    UIElements.push(new DrawnSprite({
+    UIElements.push(new UIElement({
         height: 92 * 2,
         width: 160 * 2,
         centerX: true,
