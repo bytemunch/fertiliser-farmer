@@ -51,7 +51,7 @@ export class Item extends WorldActor {
         let tile = tileGrid[this.gridX][this.gridY].tile;
         let connected = [tile.ne.contents, tile.nw.contents, tile.sw.contents, tile.se.contents];
 
-        return connected.filter(item => item && item.type == targetType && item.level == targetLevel);
+        return connected.filter(item => item && item.type == targetType && item.level == targetLevel && tileGrid[item.gridX][item.gridY].tile.type == 'grass');
     }
 
     get screenX() {

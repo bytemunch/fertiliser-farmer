@@ -1,5 +1,5 @@
 import { Sprite } from './Sprite.js';
-import { IActorOptions, viewScale, sprites, DEBUG } from '../main.js';
+import { IActorOptions, viewScale, sprites, DEBUG, camera } from '../main.js';
 import { Camera } from "./Camera.js";
 export abstract class WorldActor {
     _x: number | false;
@@ -16,6 +16,8 @@ export abstract class WorldActor {
     height: number;
 
     type;
+
+    visible: boolean = false;
 
     constructor(opts?: IActorOptions) {
         this._x = false;
@@ -53,30 +55,31 @@ export abstract class WorldActor {
     //TODO magic numbers
 
     get x() {
-        if (this._x === false)
-            this._x = (this.gridX * 64 + this.xOffset) * viewScale;
+        if (this._x === false) {
+            this._x = (this.gridX * 64 + this.xOffset);
+        }
         return this._x;
     }
 
     get y() {
-        if (this._y === false)
-            this._y = (this.gridY * 16 + this.yOffset) * viewScale;
+        if (this._y === false) {
+            this._y = (this.gridY * 16 + this.yOffset);
+        }
         return this._y;
     }
 
     draw(ctx: CanvasRenderingContext2D, camera: Camera) {
-        if (this.inView(camera)) {
-            ctx.drawImage(this.img, 0, 0, this.img.width, this.img.height, this.x - camera.x, this.y - camera.y, this.img.width, this.img.height);
+        if (this.visible) {
+            ctx.drawImage(this.img, Math.floor(this.x - camera.x), Math.floor(this.y - camera.y));
+            if (DEBUG.boundingBoxes) ctx.strokeRect(this.x - camera.x, this.y - camera.y, this.width * viewScale, this.height * viewScale);
             return true;
         }
-        if (DEBUG.boundingBoxes) ctx.strokeRect(this.x - camera.x, this.y - camera.y, this.width*viewScale, this.height*viewScale);
 
         return false;
-
     }
 
     update() {
-        
+        this.visible = this.inView(camera);
     }
 
     inView(camera: Camera) {

@@ -8,7 +8,7 @@ import { IUIOptions, UIElement, Bank, CoinDisplay, XPDisplay, XPBall, PlayButton
 import { Animal, Chicken, newAnimalFromJSON } from './class/Animal.js';
 
 export let DEBUG = {
-    boundingBoxes: true,
+    boundingBoxes: false,
     showInfo: true,
     editVars: true
 }
@@ -495,6 +495,8 @@ export const saveGame = (force?) => {
 
 
 const loadGame = () => {
+    cleanup();
+
     let saveData = JSON.parse(localStorage.getItem('save'));
 
     coins = saveData.coins;
@@ -792,6 +794,16 @@ const avg = (arr) => {
 
 export let animals: Animal[] = [];
 
+let drawnObjs = 0;
+
+const sortArray = arr => {
+    arr.sort((a, b) => a.y - b.y);
+
+    arr.sort((a, b) => a.layer - b.layer);
+
+    return arr;
+}
+
 const drawGame = () => {
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, cnv.width, cnv.height);
@@ -800,13 +812,14 @@ const drawGame = () => {
 
     flatArray = flatArray.concat(extraActors).concat(animals);
 
-    flatArray.sort((a, b) => a.y - b.y);
+    flatArray = sortArray(flatArray);
 
-    flatArray.sort((a, b) => a.layer - b.layer);
-
-    let drawnObjs = 0;
+    drawnObjs = 0;
     for (let actor of flatArray) {
         (<WorldActor>actor).update();
+    }
+
+    for (let actor of flatArray.filter(v=>v.visible)) {
         if ((<WorldActor>actor).draw(ctx, camera)) drawnObjs++;
     }
 
@@ -829,8 +842,9 @@ const drawDebug = () => {
     ctx.fillStyle = 'white';
     ctx.font = '16px monospace';
     ctx.fillText('FPS: ' + avgFps.toFixed(2), 10, cnv.height - 4);
-    ctx.fillText('rev' + version, cnv.width - 60, cnv.height - 4);
+    ctx.fillText('rev' + version, cnv.width - 120, cnv.height - 4);
     ctx.fillText(`[${((camera.x + camera.viewWidth / 2) - 32).toPrecision(4)},${((camera.y + camera.viewHeight / 2) - 48).toPrecision(4)}]`, cnv.width / 2, cnv.height - 4);
+    ctx.fillText(`{${drawnObjs}:${UIElements.length}}`, 128, cnv.height - 4);
     // Crosshair
     ctx.beginPath();
     ctx.moveTo(cnv.width / 2, 0);
