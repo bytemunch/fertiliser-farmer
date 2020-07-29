@@ -1,6 +1,5 @@
 import { WorldActor } from "./WorldActor.js";
-import { Camera } from "./Camera.js";
-import { sprites, fElapsedTime, flattenArray, tileGrid, IActorOptions, saveGame, LAYERNUMBERS } from "../main.js";
+import { sprites, fElapsedTime, tileGrid, IActorOptions, saveGame, LAYERNUMBERS } from "../main.js";
 import { Tile } from "./Tile.js";
 import { Item } from "./Item.js";
 
@@ -89,8 +88,8 @@ export class Animal extends WorldActor {
     }
 
     underfoot(position) {
-        for (let tile of flattenArray(tileGrid)) {
-            tile = tile as Tile;
+        for (let gtile of tileGrid.flat()) {
+            let tile = gtile.tile;
             if (tile.baseClass != 'tile') continue;
             if (tile.collides(position[0], position[1])) {
                 return tile;

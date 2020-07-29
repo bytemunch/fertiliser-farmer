@@ -51,6 +51,11 @@ export class UIElement {
         ctx.drawImage(this.img, this.left, this.top, this.width * viewScale, this.height * viewScale);
     }
 
+    clear() {
+        let ctx = layers[this.layer].ctx;
+        ctx.clearRect(this.x, this.y, this.width, this.height);
+    }
+
     destroy() {
         UIElements.splice(UIElements.indexOf(this), 1);
     }

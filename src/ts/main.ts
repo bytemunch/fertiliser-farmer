@@ -23,7 +23,8 @@ export let LAYERNUMBERS = {
     tile: 0,
     item: 1,
     animal: 1,
-    ui: 3
+    ui: 2,
+    debug: 3
 }
 
 export let layers = [];
@@ -32,7 +33,9 @@ let numLayers = 4;
 
 for (let i = 0; i < numLayers; i++) {
     let newCnv = document.createElement('canvas');
-    layers.push({ cnv: newCnv, ctx: newCnv.getContext('2d') });
+    let opts = {};
+    if (i == 0) opts = {alpha:false};
+    layers.push({ cnv: newCnv, ctx: newCnv.getContext('2d', opts) });
 }
 
 console.log(layers);
@@ -107,6 +110,8 @@ export class Drop extends UIElement {
     targetDirection: number[];
     value;
 
+    layer = LAYERNUMBERS.item;
+
     mag = 0;
 
     constructor(opts: IDropOptions) {
@@ -147,6 +152,10 @@ export class Drop extends UIElement {
         }
 
         if (this.left > layers[0].cnv.width || this.top > layers[0].cnv.height || this.left < 0 || this.top < 0) this.removeNextDraw = true;
+    }
+
+    destroy() {
+        extraActors.splice(extraActors.indexOf(this),1);
     }
 }
 
@@ -300,9 +309,9 @@ class AntiFog extends Tool {
         // decrement uses
         if (!super.act(x, y)) return false;
         // if fog is at x,y
-        for (let tile of flattenArray(tileGrid)) {
+        for (let gtile of tileGrid.flat()) {
+            let tile = gtile.tile;
             // remove fog
-            if (tile.baseClass != 'tile') continue;
             if (tile.type != 'fog') continue;
             if (tile.collides(x, y)) {
                 tileGrid[tile.gridX][tile.gridY].tile = new Tile({
@@ -466,7 +475,11 @@ const loadSprites = () => {
 
 const startLoop = () => {
     loop = true;
-    requestAnimationFrame(rAFLoop);
+    requestAnimationFrame(mainLoop);
+    requestAnimationFrame(drawTiles);
+    requestAnimationFrame(drawItems);
+    requestAnimationFrame(updateItems);
+    requestAnimationFrame(updateTiles);
 }
 
 let saving;
@@ -504,7 +517,7 @@ export const saveGame = (force?) => {
 
 
 const loadGame = () => {
-    cleanup();
+    cleanupArrays();
 
     let saveData = JSON.parse(localStorage.getItem('save'));
 
@@ -582,6 +595,7 @@ const addGameUI = () => {
 }
 
 export const startGame = () => {
+    clearLayer('ui');
     if (localStorage.getItem('save') == null) {
         createNewGame();
     } else {
@@ -612,7 +626,7 @@ window.addEventListener('popstate', e => {
 })
 
 const createMainMenu = () => {
-    cleanup();
+    cleanupArrays();
     state = 'mainmenu';
     //@ts-ignore
     window.location = '#' + state;
@@ -677,12 +691,11 @@ const loaded = async () => {
     contentDiv.addEventListener('touchstart', touched);
 
     createMainMenu();
-    // startGame();
 
     startLoop();
 }
 
-const cleanup = () => {
+const cleanupArrays = () => {
     coins = 0;
     xp = 0;
     inventory = new Inventory;
@@ -707,10 +720,21 @@ const cleanup = () => {
     }
 }
 
+const clearAllLayers = () => {
+    for (let l of layers) {
+        l.ctx.clearRect(0, 0, l.cnv.width, l.cnv.height);
+    }
+}
+
+const clearLayer = l => {
+    if (typeof l == 'string') l = LAYERNUMBERS[l];
+    layers[l].ctx.clearRect(0, 0, layers[l].cnv.width, layers[l].cnv.height);
+}
+
 
 // new game
 const createNewGame = () => {
-    cleanup();
+    cleanupArrays();
 
     let waterHBorder = 1;
     let waterVBorder = 6;
@@ -761,17 +785,6 @@ const createNewGame = () => {
     saveGame(true);
 }
 
-export const flattenArray = array2D => {
-    let flatArray = [];
-
-    array2D.forEach(row => row.forEach(gridSq => {
-        flatArray.push(gridSq.tile);
-        if (gridSq.contents) flatArray.push(gridSq.contents)
-    }));
-
-    return flatArray;
-}
-
 let fps = 0;
 let lastT = 0;
 let frameTime = 0;
@@ -796,38 +809,36 @@ export let animals: Animal[] = [];
 
 let drawnObjs = 0;
 
-const sortArray = arr => {
-    arr.sort((a, b) => a.y - b.y);
-
-    arr.sort((a, b) => a.layer - b.layer);
-
-    return arr;
+const drawTiles = () => {
+    tileGrid.flat().filter(t => t.tile.visible).sort((a, b) => (a.tile.y - b.tile.y)).forEach(t => t.tile.draw());
+    if (loop) requestAnimationFrame(drawTiles);
 }
 
-const drawGame = () => {
-    layers[0].ctx.fillStyle = 'white';
-    layers[0].ctx.fillRect(0, 0, layers[0].cnv.width, layers[0].cnv.height);
+const updateTiles = () => {
+    tileGrid.forEach(col => col.forEach(i => i.tile.update()));
+    if (loop) requestAnimationFrame(updateTiles);
+}
 
-    let flatArray = flattenArray(tileGrid);
+const drawItems = () => {
+    clearLayer('item');
+    tileGrid.forEach(col => col.filter(t => t.contents?.visible).sort((a, b) => (a.contents.y - b.contents.y)).forEach(t => t.contents.draw()));
+    extraActors.forEach(a => { a.removeNextDraw ? a.destroy() : a.draw() });
+    if (loop) requestAnimationFrame(drawItems);
+}
 
-    flatArray = flatArray.concat(extraActors).concat(animals);
+const updateItems = () => {
+    tileGrid.forEach(col => col.filter(t => t.contents).forEach(i => i.contents.update()));
+    if (loop) requestAnimationFrame(updateItems);
+}
 
-    flatArray = sortArray(flatArray);
+const drawUI = () => {
 
     drawnObjs = 0;
-    for (let actor of flatArray) {
-        (<WorldActor>actor).update();
-    }
-
-    for (let actor of flatArray.filter(v => v.visible)) {
-        if ((<WorldActor>actor).draw()) drawnObjs++;
-    }
-
     // UI
     UIElements.forEach(el => { if (el.removeNextDraw) el.destroy() });
 
-    UIElements.sort((a, b) => a.layer - b.layer);
     for (let el of UIElements) {
+        el.clear();
         el.draw(layers[0].ctx);
     }
 
@@ -835,60 +846,57 @@ const drawGame = () => {
 }
 
 const drawDebug = () => {
-    //DEBUG
-    layers[0].ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    layers[0].ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-    layers[0].ctx.fillRect(0, layers[0].cnv.height - 20, layers[0].cnv.width, 20);
-    layers[0].ctx.fillStyle = 'white';
-    layers[0].ctx.font = '16px monospace';
-    layers[0].ctx.fillText('FPS: ' + avgFps.toFixed(2), 10, layers[0].cnv.height - 4);
-    layers[0].ctx.fillText('rev' + version, layers[0].cnv.width - 120, layers[0].cnv.height - 4);
-    layers[0].ctx.fillText(`[${((camera.x + camera.viewWidth / 2) - 32).toPrecision(4)},${((camera.y + camera.viewHeight / 2) - 48).toPrecision(4)}]`, layers[0].cnv.width / 2, layers[0].cnv.height - 4);
-    layers[0].ctx.fillText(`{${drawnObjs}:${UIElements.length}}`, 128, layers[0].cnv.height - 4);
-    // Crosshair
-    layers[0].ctx.beginPath();
-    layers[0].ctx.moveTo(layers[0].cnv.width / 2, 0);
-    layers[0].ctx.lineTo(layers[0].cnv.width / 2, layers[0].cnv.height - 20);
-    layers[0].ctx.moveTo(0, layers[0].cnv.height / 2);
-    layers[0].ctx.lineTo(layers[0].cnv.width, layers[0].cnv.height / 2);
-    layers[0].ctx.stroke();
-    layers[0].ctx.closePath();
-}
-
-const rAFLoop = (t: DOMHighResTimeStamp) => {
-    layers[0].ctx.translate(-0.5, -0.5);
-    frameTime = t - lastT;
     fps = 1000 / frameTime;
-    lastT = t;
-    fElapsedTime = frameTime / 100;
-
     prevFPSs.push(fps);
 
     if (prevFPSs.length > 30) prevFPSs.shift();
 
     avgFps = avg(prevFPSs);
 
+    let ctx = layers[LAYERNUMBERS.debug].ctx;
+    //DEBUG
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.clearRect(0, layers[0].cnv.height - 20, layers[0].cnv.width, 20);
+    ctx.fillRect(0, layers[0].cnv.height - 20, layers[0].cnv.width, 20);
+    ctx.fillStyle = 'white';
+    ctx.font = '16px monospace';
+    ctx.fillText('FPS: ' + avgFps.toFixed(2), 10, layers[0].cnv.height - 4);
+    ctx.fillText('rev' + version, layers[0].cnv.width - 120, layers[0].cnv.height - 4);
+    ctx.fillText(`[${((camera.x + camera.viewWidth / 2) - 32).toPrecision(4)},${((camera.y + camera.viewHeight / 2) - 48).toPrecision(4)}]`, layers[0].cnv.width / 2, layers[0].cnv.height - 4);
+    ctx.fillText(`{${drawnObjs}:${UIElements.length}}`, 128, layers[0].cnv.height - 4);
+    // Crosshair
+    ctx.beginPath();
+    ctx.moveTo(layers[0].cnv.width / 2, 0);
+    ctx.lineTo(layers[0].cnv.width / 2, layers[0].cnv.height - 20);
+    ctx.moveTo(0, layers[0].cnv.height / 2);
+    ctx.lineTo(layers[0].cnv.width, layers[0].cnv.height / 2);
+    ctx.stroke();
+    ctx.closePath();
+}
+
+const mainLoop = (t: DOMHighResTimeStamp) => {
+    frameTime = t - lastT;
+    lastT = t;
+    fElapsedTime = frameTime / 100;
+
     for (let s in sprites) {
         sprites[s].draw();
     }
 
-    switch (state) {
-        case 'playing':
-            break;
-    }
-
-    drawGame();
+    drawUI();
 
     handleInput();
 
-    if (DEBUG.showInfo) drawDebug();
-
-
-    layers[0].ctx.resetTransform();
+    if (DEBUG.showInfo) {
+        drawDebug();
+    }
 
     frameCount++;
 
-    if (loop) requestAnimationFrame(rAFLoop);
+    if (loop) {
+        requestAnimationFrame(mainLoop);
+    }
 }
 
 let keysHeld: { [key: string]: boolean } = {};
@@ -945,8 +953,8 @@ export const pickup = (dragged, callback?) => {
         dragged._x = x - (dragged.width / 2) * viewScale;
         dragged._y = y - (dragged.height / 2) * viewScale;
 
-        for (let tile of flattenArray(tileGrid)) {
-            tile = tile as Tile;
+        for (let gtile of tileGrid.flat()) {
+            let tile = gtile.tile;
             if (!tile.droppable) continue;
 
             tile.draggedOver = false;
@@ -962,8 +970,8 @@ export const pickup = (dragged, callback?) => {
         e.preventDefault();
         let goodMove = false;
 
-        for (let tile of flattenArray(tileGrid)) {
-            tile = tile as Tile;
+        for (let gtile of tileGrid.flat()) {
+            let tile = gtile.tile;
             if (!tile.droppable) continue;
 
             tile.draggedOver = false;
@@ -1017,10 +1025,10 @@ export const pickup = (dragged, callback?) => {
 }
 
 const itemTouchListeners = (x, y) => {
-    for (let actor of flattenArray(tileGrid)) {
-        actor = actor as WorldActor;
+    for (let gtile of tileGrid.flat()) {
+        let actor = gtile.contents;
 
-        if (actor.draggable && actor.collides(x, y)) {
+        if (actor && actor.draggable && actor.collides(x, y)) {
             pickup(actor);
             console.log('item hit')
             return true;

@@ -1,5 +1,5 @@
 import { WorldActor } from './WorldActor.js';
-import { IActorOptions, tileGrid, itemManifest, sprites, UIElements, randInRange, camera, dropManifest, Coin, XPDrop, ItemDrop, inventory, layers, LAYERNUMBERS } from '../main.js';
+import { IActorOptions, tileGrid, itemManifest, sprites, randInRange, camera, dropManifest, Coin, XPDrop, ItemDrop, inventory, layers, LAYERNUMBERS, extraActors } from '../main.js';
 
 export const newItemFromJSON = (data) => {
     return new Item({
@@ -73,7 +73,7 @@ export class Item extends WorldActor {
             for (let i = 0; i < amt; i++) {
                 switch (drop) {
                     case 'coin':
-                        UIElements.push(new Coin({
+                        extraActors.push(new Coin({
                             left: this.screenX,
                             top: this.screenY,
                             height: 16,
@@ -85,7 +85,7 @@ export class Item extends WorldActor {
                         }))
                         break;
                     case 'xp':
-                        UIElements.push(new XPDrop({
+                        extraActors.push(new XPDrop({
                             left: this.screenX,
                             top: this.screenY,
                             height: 16,
@@ -110,7 +110,7 @@ export class Item extends WorldActor {
                             finish: () => inventory.addByTypeAndLevel(drop.split('-')[0], drop.split('-')[1])
                         });
                         droppedItem.level = drop.split('-')[1];
-                        UIElements.push(droppedItem);
+                        extraActors.push(droppedItem);
                         // console.log('Drop not implemented:', drop);
                         break;
                 }
@@ -121,7 +121,7 @@ export class Item extends WorldActor {
     dropXpForMerge(numUpgraded) {
         let numBalls = numUpgraded * (itemManifest[this.type].dropTable.xp[0] / 10) * this.level;
         for (let i = 0; i < numBalls; i++) {
-            UIElements.push(new XPDrop({
+            extraActors.push(new XPDrop({
                 left: this.screenX,
                 top: this.screenY,
                 height: 8,
