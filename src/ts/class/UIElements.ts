@@ -234,6 +234,27 @@ export class MenuButton extends UIElement {
     }
 }
 
+export class ClearButton extends UIElement {
+    interactable = true;
+    constructor(opts: IUIOptions) {
+        super(opts);
+
+        if (localStorage.getItem('save') == null) {
+            this.sprite = sprites.clearButtonInactive;
+            this.interactable = false;
+        }
+    }
+    act() {
+        localStorage.clear();
+        this.sprite = sprites.clearButtonInactive;
+        this.interactable = false;
+    }
+
+    draw(ctx: CanvasRenderingContext2D) {
+        ctx.drawImage(this.img, this.left, this.top, this.width * viewScale, this.height * viewScale);
+    }
+}
+
 class CloseButton extends UIElement {
     interactable = true;
     target;
@@ -452,6 +473,20 @@ class MenuScreen extends Screen {
     color1 = '#68aed4';
     color2 = '#234975';
     type = 'screen-menu';
+
+    populate() {
+        let clearBtn = new ClearButton({
+            height: 60,
+            layer: this.layer + 10,
+            sprite: sprites.clearButton,
+            type: 'clear',
+            width: 92,
+            top: this.top + 50,
+            centerX: true
+        })
+        this.children.push(clearBtn);
+        UIElements.push(clearBtn);
+    }
 }
 
 class RewardScreen extends Screen {

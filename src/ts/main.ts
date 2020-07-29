@@ -440,6 +440,12 @@ const loadSprites = () => {
     sprites.menuButton = new Sprite('./img/graphics/btn_menu.png', 92, 60);
     loadPromises.push(sprites.menuButton.ready);
 
+    sprites.clearButton = new Sprite('./img/graphics/btn_clear.png', 92, 60);
+    loadPromises.push(sprites.clearButton.ready);
+
+    sprites.clearButtonInactive = new Sprite('./img/graphics/btn_clear_inactive.png', 92, 60);
+    loadPromises.push(sprites.clearButtonInactive.ready);
+
     sprites.title = new Sprite('./img/graphics/title.png', 320, 184);
     loadPromises.push(sprites.title.ready);
 
@@ -750,7 +756,7 @@ const createNewGame = () => {
         }
     }
 
-    saveGame();
+    saveGame(true);
 }
 
 export const flattenArray = array2D => {
