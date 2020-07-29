@@ -580,11 +580,31 @@ export const startGame = () => {
     addGameUI();
 
     state = 'playing';
+    //@ts-ignore
+    window.location = '#' + state;
 }
 
+window.addEventListener('popstate', e => {
+    if (state == location.hash.replace('#', '')) return;
+    state = location.hash.replace('#', '');
+
+    switch (state) {
+        case 'playing':
+            startGame();
+            break;
+        case 'mainmenu':
+            createMainMenu();
+            break;
+        default:
+            console.error('Hash not found!',state);
+    }
+})
+
 const createMainMenu = () => {
+    cleanup();
     state = 'mainmenu';
-    UIElements = [];
+    //@ts-ignore
+    window.location = '#' + state;
 
     UIElements.push(new PlayButton({
         height: 48 * 2,
@@ -598,7 +618,7 @@ const createMainMenu = () => {
 
     UIElements.push(new MenuButton({
         height: 60,
-        width:92,
+        width: 92,
         top: 10,
         right: 10,
         layer: 10,
@@ -648,9 +668,7 @@ const loaded = async () => {
     startLoop();
 }
 
-
-// new game
-const createNewGame = () => {
+const cleanup = () => {
     coins = 0;
     xp = 0;
     inventory = new Inventory;
@@ -659,7 +677,8 @@ const createNewGame = () => {
         antifog: new AntiFog,
         hand: new HandTool,
     };
-
+    UIElements = [];
+    
     for (let i = 0; i < worldWidth; i++) {
         for (let j = 0; j < worldHeight; j++) {
             tileGrid[i][j] = {
@@ -673,6 +692,12 @@ const createNewGame = () => {
             }
         }
     }
+}
+
+
+// new game
+const createNewGame = () => {
+    cleanup();
 
     let waterHBorder = 1;
     let waterVBorder = 6;
@@ -762,6 +787,9 @@ const avg = (arr) => {
 export let animals: Animal[] = [];
 
 const drawGame = () => {
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, cnv.width, cnv.height);
+
     let flatArray = flattenArray(tileGrid);
 
     flatArray = flatArray.concat(extraActors).concat(animals);
@@ -828,9 +856,6 @@ const rAFLoop = (t: DOMHighResTimeStamp) => {
         case 'playing':
             break;
     }
-
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, cnv.width, cnv.height);
 
     drawGame();
 
