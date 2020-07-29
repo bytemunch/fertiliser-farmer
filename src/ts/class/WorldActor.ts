@@ -1,6 +1,5 @@
 import { Sprite } from './Sprite.js';
-import { IActorOptions, viewScale, sprites, DEBUG, camera } from '../main.js';
-import { Camera } from "./Camera.js";
+import { IActorOptions, viewScale, DEBUG, camera, layers } from '../main.js';
 export abstract class WorldActor {
     _x: number | false;
     _y: number | false;
@@ -29,8 +28,6 @@ export abstract class WorldActor {
         this.gridY = opts.gridPosition.gridY;
 
         this.type = opts.type;
-
-        this.layer = opts.layer;
 
         this.sprite = opts.sprite;
     }
@@ -68,10 +65,14 @@ export abstract class WorldActor {
         return this._y;
     }
 
-    draw(ctx: CanvasRenderingContext2D, camera: Camera) {
+    draw() {
         if (this.visible) {
-            ctx.drawImage(this.img, Math.floor(this.x - camera.x), Math.floor(this.y - camera.y));
-            if (DEBUG.boundingBoxes) ctx.strokeRect(this.x - camera.x, this.y - camera.y, this.width * viewScale, this.height * viewScale);
+            try {
+            layers[this.layer].ctx.drawImage(this.img, Math.floor(this.x - camera.x), Math.floor(this.y - camera.y));
+            } catch(e) {
+                console.info(this.layer);
+            }
+            if (DEBUG.boundingBoxes) layers[this.layer].ctx.strokeRect(this.x - camera.x, this.y - camera.y, this.width * viewScale, this.height * viewScale);
             return true;
         }
 
@@ -79,10 +80,10 @@ export abstract class WorldActor {
     }
 
     update() {
-        this.visible = this.inView(camera);
+        this.visible = this.inView();
     }
 
-    inView(camera: Camera) {
+    inView() {
         return (this.x + camera.xOffset > camera.x && this.x < camera.x + camera.viewWidth
             && this.y + camera.yOffset > camera.y && this.y < camera.y + camera.viewHeight);
     }

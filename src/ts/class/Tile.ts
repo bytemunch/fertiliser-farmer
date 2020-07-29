@@ -1,11 +1,10 @@
 import { WorldActor } from './WorldActor.js';
-import { IActorOptions, tileGrid, viewScale, sprites } from '../main.js';
+import { IActorOptions, tileGrid, viewScale, sprites, layers, camera, LAYERNUMBERS } from '../main.js';
 import { pointInPolygon } from '../functions/collision.js';
 
 export const newTileFromJSON = (data) => {
     return new Tile({
         gridPosition: { gridX: data.gridX, gridY: data.gridY },
-        layer: data.layer,
         sprite: sprites[data.type],
         type: data.type,
         droppable: data.droppable
@@ -16,6 +15,8 @@ export class Tile extends WorldActor {
     droppable = false;
     draggedOver = false;
     baseClass = 'tile';
+    layer = LAYERNUMBERS.tile;
+    
     constructor(opts?: IActorOptions) {
         super(opts);
 
@@ -64,15 +65,16 @@ export class Tile extends WorldActor {
         ]
     }
 
-    draw(ctx: CanvasRenderingContext2D, cam) {
-        if (!super.draw(ctx, cam)) return false;
+    draw() {
+        if (!super.draw()) return false;
 
         if (this.draggedOver) {
+            const ctx = layers[this.layer].ctx;
             ctx.fillStyle = '#ff000088';
             ctx.beginPath();
-            ctx.moveTo(this.points[0][0] - cam.x, this.points[0][1] - cam.y);
+            ctx.moveTo(this.points[0][0] - camera.x, this.points[0][1] - camera.y);
             for (let p of this.points) {
-                ctx.lineTo(p[0] - cam.x, p[1] - cam.y);
+                ctx.lineTo(p[0] - camera.x, p[1] - camera.y);
             }
             ctx.closePath();
             ctx.fill();

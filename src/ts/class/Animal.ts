@@ -1,6 +1,6 @@
 import { WorldActor } from "./WorldActor.js";
 import { Camera } from "./Camera.js";
-import { LAYERS, sprites, fElapsedTime, flattenArray, tileGrid, IActorOptions, saveGame } from "../main.js";
+import { sprites, fElapsedTime, flattenArray, tileGrid, IActorOptions, saveGame, LAYERNUMBERS } from "../main.js";
 import { Tile } from "./Tile.js";
 import { Item } from "./Item.js";
 
@@ -14,6 +14,7 @@ export const newAnimalFromJSON = JSONData => {
 }
 
 export class Animal extends WorldActor {
+    layer = LAYERNUMBERS.animal;
     target = [0, 0];
     state = 'roam';
     age = 0;//in frames
@@ -51,7 +52,6 @@ export class Animal extends WorldActor {
         if (tile?.type == 'grass' && tile?.contents == null) {
             tileGrid[tile.gridX][tile.gridY].contents = new Item({
                 gridPosition: { gridX: tile.gridX, gridY: tile.gridY },
-                layer: LAYERS.ITEM,
                 sprite: sprites[`poop-${this.poopSize}`],
                 type: `poop`,
                 level: this.poopSize
@@ -80,14 +80,6 @@ export class Animal extends WorldActor {
         }
     }
 
-    draw(ctx: CanvasRenderingContext2D, cam: Camera) {
-        if (!super.draw(ctx, cam)) {
-            return false;
-        }
-
-        return true;
-    }
-
     get basePos() {
         return [this.x + this.width / 2, this.y + this.height];
     }
@@ -111,7 +103,6 @@ export class Chicken extends Animal {
     constructor(position: [number, number]) {
         super({
             gridPosition: { gridX: 0, gridY: 0 },
-            layer: LAYERS.ITEM,
             sprite: sprites['animal-chicken'],
             type: 'animal-chicken',
         })

@@ -13,29 +13,38 @@ export let DEBUG = {
     editVars: true
 }
 
-// TODO use this
-export const LAYERS = {
-    BG: 0,
-    FG: 100,
-    ITEM: 200,
-    UI: 500
-}
-
 let version;
 
 (async () => {
     version = await (await fetch('./version')).text();
 })();
 
-export let cnv = document.createElement('canvas');
-cnv.style.imageRendering = 'pixelated';
-let ctx = cnv.getContext('2d', { alpha: false });
-ctx.imageSmoothingEnabled = false;
+export let LAYERNUMBERS = {
+    tile: 0,
+    item: 1,
+    animal: 1,
+    ui: 3
+}
+
+export let layers = [];
+
+let numLayers = 4;
+
+for (let i = 0; i < numLayers; i++) {
+    let newCnv = document.createElement('canvas');
+    layers.push({ cnv: newCnv, ctx: newCnv.getContext('2d') });
+}
+
+console.log(layers);
 
 window.addEventListener('resize', () => {
-    cnv.height = window.innerHeight;
-    cnv.width = window.innerWidth;
-    targetBB = cnv.getBoundingClientRect();
+
+    for (let c of layers) {
+        c.cnv.height = window.innerHeight;
+        c.cnv.width = window.innerWidth;
+    }
+
+    targetBB = layers[0].cnv.getBoundingClientRect();
 
     camera.resized();
 
@@ -135,7 +144,7 @@ export class Drop extends UIElement {
             this.top += this.targetDirection[1] * (this.mag / 3) * fElapsedTime;
         }
 
-        if (this.left > cnv.width || this.top > cnv.height || this.left < 0 || this.top < 0) this.removeNextDraw = true;
+        if (this.left > layers[0].cnv.width || this.top > layers[0].cnv.height || this.left < 0 || this.top < 0) this.removeNextDraw = true;
     }
 }
 
@@ -296,7 +305,6 @@ class AntiFog extends Tool {
             if (tile.collides(x, y)) {
                 tileGrid[tile.gridX][tile.gridY].tile = new Tile({
                     gridPosition: { gridX: tile.gridX, gridY: tile.gridY },
-                    layer: tile.layer,
                     sprite: sprites.grass,
                     droppable: true,
                     type: 'grass',
@@ -357,7 +365,6 @@ if (DEBUG.editVars) {
 export interface IActorOptions {
     gridPosition: { gridX: number, gridY: number },
     sprite: Sprite,
-    layer: number,
     droppable?: boolean,
     draggable?: boolean,
     type: string,
@@ -526,17 +533,15 @@ const addGameUI = () => {
         right: 0,
         width: 64,
         height: 64,
-        layer: 2,
         type: 'bank',
         sprite: sprites.bank
     }))
 
     UIElements.push(new ToolSelector({
         left: 0,
-        top: cnv.height - 64,
+        top: layers[0].cnv.height - 64,
         width: 64,
         height: 64,
-        layer: 2,
         type: 'tool_select',
         sprite: sprites.tool_select
     }))
@@ -545,7 +550,6 @@ const addGameUI = () => {
         centerX: true,
         width: 64,
         height: 64,
-        layer: 2,
         type: 'inventory',
         sprite: sprites.inventory
     }))
@@ -554,7 +558,6 @@ const addGameUI = () => {
         right: 64,
         width: 120,
         height: 20,
-        layer: 2,
         type: 'coindisplay',
         sprite: sprites.coin
     }))
@@ -563,7 +566,6 @@ const addGameUI = () => {
         left: 64,
         width: 120,
         height: 20,
-        layer: 2,
         type: 'xpdisplay',
         sprite: sprites.xp
     }))
@@ -572,7 +574,6 @@ const addGameUI = () => {
         left: 0,
         width: 64,
         height: 64,
-        layer: 2,
         type: 'xporb',
         sprite: sprites.xporb
     }))
@@ -604,7 +605,7 @@ window.addEventListener('popstate', e => {
             createMainMenu();
             break;
         default:
-            console.error('Hash not found!',state);
+            console.error('Hash not found!', state);
     }
 })
 
@@ -618,8 +619,7 @@ const createMainMenu = () => {
         height: 48 * 2,
         width: 78 * 2,
         centerX: true,
-        bottom: cnv.height * 0.05,
-        layer: 10,
+        bottom: layers[0].cnv.height * 0.05,
         sprite: sprites.playButton,
         type: 'play'
     }))
@@ -629,7 +629,6 @@ const createMainMenu = () => {
         width: 92,
         top: 10,
         right: 10,
-        layer: 10,
         sprite: sprites.menuButton,
         type: 'menu'
     }))
@@ -638,8 +637,7 @@ const createMainMenu = () => {
         height: 92 * 2,
         width: 160 * 2,
         centerX: true,
-        top: cnv.height * 0.05,
-        layer: 9,
+        top: layers[0].cnv.height * 0.05,
         sprite: sprites.title,
         type: 'title'
     }))
@@ -655,12 +653,16 @@ const loaded = async () => {
     let gameW = cBB.width - Number(cBBStyle.borderWidth.replace('px', '')) * 2 - Number(cBBStyle.paddingLeft.replace('px', '')) - Number(cBBStyle.paddingRight.replace('px', ''))
     let gameH = cBB.height - Number(cBBStyle.borderWidth.replace('px', '')) * 2 - Number(cBBStyle.paddingTop.replace('px', '')) - Number(cBBStyle.paddingBottom.replace('px', ''))
 
-    cnv.width = gameW;
-    cnv.height = gameH;
+    for (let c of layers) {
+        c.cnv.width = gameW;
+        c.cnv.height = gameH;
+    }
 
     camera = new Camera;
 
-    contentDiv.appendChild(cnv);
+    for (let c of layers) {
+        contentDiv.appendChild(c.cnv);
+    }
 
     await loadSprites();
     // start making tiles here
@@ -669,6 +671,8 @@ const loaded = async () => {
     for (let i = 0; i < worldWidth; i++) {
         tileGrid[i] = [];
     }
+
+    contentDiv.addEventListener('touchstart', touched);
 
     createMainMenu();
     // startGame();
@@ -686,14 +690,13 @@ const cleanup = () => {
         hand: new HandTool,
     };
     UIElements = [];
-    
+
     for (let i = 0; i < worldWidth; i++) {
         for (let j = 0; j < worldHeight; j++) {
             tileGrid[i][j] = {
                 contents: null,
                 tile: new Tile({
                     gridPosition: { gridX: i, gridY: j },
-                    layer: 0,
                     sprite: sprites.water,
                     type: 'water'
                 })
@@ -716,8 +719,6 @@ const createNewGame = () => {
 
     for (let i = waterHBorder; i < worldWidth - waterHBorder; i++) {
         for (let j = waterVBorder; j < worldHeight - waterVBorder; j++) {
-            let layer = 1;
-
             const noiseScale = 20;
 
             let itemSize = 5;//Math.floor(1 + Math.random() * 5);
@@ -730,7 +731,6 @@ const createNewGame = () => {
                 if (i < worldWidth / 2 && j < worldHeight / 2) {
                     tile = new Tile({
                         gridPosition: { gridX: i, gridY: j },
-                        layer,
                         sprite: sprites.grass,
                         droppable: true,
                         type: 'grass',
@@ -738,7 +738,6 @@ const createNewGame = () => {
                 } else {
                     tile = new Tile({
                         gridPosition: { gridX: i, gridY: j },
-                        layer,
                         sprite: sprites.fog,
                         droppable: false,
                         type: 'fog',
@@ -748,7 +747,6 @@ const createNewGame = () => {
                     tile,
                     contents: Math.random() < 0.1 ? new Item({
                         gridPosition: { gridX: i, gridY: j },
-                        layer: layer + 10,
                         sprite: sprites[`${item}-${itemSize}`],
                         type: item,
                         level: itemSize
@@ -805,8 +803,8 @@ const sortArray = arr => {
 }
 
 const drawGame = () => {
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, cnv.width, cnv.height);
+    layers[0].ctx.fillStyle = 'white';
+    layers[0].ctx.fillRect(0, 0, layers[0].cnv.width, layers[0].cnv.height);
 
     let flatArray = flattenArray(tileGrid);
 
@@ -819,8 +817,8 @@ const drawGame = () => {
         (<WorldActor>actor).update();
     }
 
-    for (let actor of flatArray.filter(v=>v.visible)) {
-        if ((<WorldActor>actor).draw(ctx, camera)) drawnObjs++;
+    for (let actor of flatArray.filter(v => v.visible)) {
+        if ((<WorldActor>actor).draw()) drawnObjs++;
     }
 
     // UI
@@ -828,7 +826,7 @@ const drawGame = () => {
 
     UIElements.sort((a, b) => a.layer - b.layer);
     for (let el of UIElements) {
-        el.draw(ctx);
+        el.draw(layers[0].ctx);
     }
 
     // if (frameCount % 100 == 0) console.log(flatArray.length, UIElements.length, drawnObjs + UIElements.length)
@@ -836,27 +834,27 @@ const drawGame = () => {
 
 const drawDebug = () => {
     //DEBUG
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-    ctx.fillRect(0, cnv.height - 20, cnv.width, 20);
-    ctx.fillStyle = 'white';
-    ctx.font = '16px monospace';
-    ctx.fillText('FPS: ' + avgFps.toFixed(2), 10, cnv.height - 4);
-    ctx.fillText('rev' + version, cnv.width - 120, cnv.height - 4);
-    ctx.fillText(`[${((camera.x + camera.viewWidth / 2) - 32).toPrecision(4)},${((camera.y + camera.viewHeight / 2) - 48).toPrecision(4)}]`, cnv.width / 2, cnv.height - 4);
-    ctx.fillText(`{${drawnObjs}:${UIElements.length}}`, 128, cnv.height - 4);
+    layers[0].ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    layers[0].ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    layers[0].ctx.fillRect(0, layers[0].cnv.height - 20, layers[0].cnv.width, 20);
+    layers[0].ctx.fillStyle = 'white';
+    layers[0].ctx.font = '16px monospace';
+    layers[0].ctx.fillText('FPS: ' + avgFps.toFixed(2), 10, layers[0].cnv.height - 4);
+    layers[0].ctx.fillText('rev' + version, layers[0].cnv.width - 120, layers[0].cnv.height - 4);
+    layers[0].ctx.fillText(`[${((camera.x + camera.viewWidth / 2) - 32).toPrecision(4)},${((camera.y + camera.viewHeight / 2) - 48).toPrecision(4)}]`, layers[0].cnv.width / 2, layers[0].cnv.height - 4);
+    layers[0].ctx.fillText(`{${drawnObjs}:${UIElements.length}}`, 128, layers[0].cnv.height - 4);
     // Crosshair
-    ctx.beginPath();
-    ctx.moveTo(cnv.width / 2, 0);
-    ctx.lineTo(cnv.width / 2, cnv.height - 20);
-    ctx.moveTo(0, cnv.height / 2);
-    ctx.lineTo(cnv.width, cnv.height / 2);
-    ctx.stroke();
-    ctx.closePath();
+    layers[0].ctx.beginPath();
+    layers[0].ctx.moveTo(layers[0].cnv.width / 2, 0);
+    layers[0].ctx.lineTo(layers[0].cnv.width / 2, layers[0].cnv.height - 20);
+    layers[0].ctx.moveTo(0, layers[0].cnv.height / 2);
+    layers[0].ctx.lineTo(layers[0].cnv.width, layers[0].cnv.height / 2);
+    layers[0].ctx.stroke();
+    layers[0].ctx.closePath();
 }
 
 const rAFLoop = (t: DOMHighResTimeStamp) => {
-    ctx.translate(-0.5, -0.5);
+    layers[0].ctx.translate(-0.5, -0.5);
     frameTime = t - lastT;
     fps = 1000 / frameTime;
     lastT = t;
@@ -884,7 +882,7 @@ const rAFLoop = (t: DOMHighResTimeStamp) => {
     if (DEBUG.showInfo) drawDebug();
 
 
-    ctx.resetTransform();
+    layers[0].ctx.resetTransform();
 
     frameCount++;
 
@@ -936,10 +934,10 @@ export const pickup = (dragged, callback?) => {
         x = e.touches[0].pageX - targetBB.x + camera.x;
         y = e.touches[0].pageY - targetBB.y + camera.y;
 
-        if (x > cnv.width * 0.9 + camera.x) camera.move(5, 0);
-        if (x < cnv.width * 0.1 + camera.x) camera.move(-5, 0);
-        if (y > cnv.height * 0.9 + camera.y) camera.move(0, 5);
-        if (y < cnv.height * 0.1 + camera.y) camera.move(0, -5);
+        if (x > layers[0].cnv.width * 0.9 + camera.x) camera.move(5, 0);
+        if (x < layers[0].cnv.width * 0.1 + camera.x) camera.move(-5, 0);
+        if (y > layers[0].cnv.height * 0.9 + camera.y) camera.move(0, 5);
+        if (y < layers[0].cnv.height * 0.1 + camera.y) camera.move(0, -5);
 
 
         dragged._x = x - (dragged.width / 2) * viewScale;
@@ -995,8 +993,8 @@ export const pickup = (dragged, callback?) => {
         dragged._x = false;
         dragged._y = false;
 
-        cnv.removeEventListener('touchmove', moveHandler);
-        cnv.removeEventListener('touchend', endHandler);
+        contentDiv.removeEventListener('touchmove', moveHandler);
+        contentDiv.removeEventListener('touchend', endHandler);
         if (callback) callback(false);
 
         extraActors.splice(extraActors.indexOf(dragged), 1);
@@ -1010,8 +1008,8 @@ export const pickup = (dragged, callback?) => {
         saveGame();
     }
 
-    cnv.addEventListener('touchmove', moveHandler);
-    cnv.addEventListener('touchend', endHandler);
+    contentDiv.addEventListener('touchmove', moveHandler);
+    contentDiv.addEventListener('touchend', endHandler);
 
     return true;
 }
@@ -1022,6 +1020,7 @@ const itemTouchListeners = (x, y) => {
 
         if (actor.draggable && actor.collides(x, y)) {
             pickup(actor);
+            console.log('item hit')
             return true;
         }
     }
@@ -1030,6 +1029,7 @@ const itemTouchListeners = (x, y) => {
 }
 
 let cameraTouchListeners = (x, y, targetBB, startX, startY) => {
+    console.log('falling back to camera')
     // camera move listeners
     const cameraMoveHandler = e => {
         e.preventDefault();
@@ -1044,12 +1044,12 @@ let cameraTouchListeners = (x, y, targetBB, startX, startY) => {
     const cameraEndHandler = e => {
         e.preventDefault();
 
-        cnv.removeEventListener('touchmove', cameraMoveHandler);
-        cnv.removeEventListener('touchend', cameraEndHandler);
+        contentDiv.removeEventListener('touchmove', cameraMoveHandler);
+        contentDiv.removeEventListener('touchend', cameraEndHandler);
     }
 
-    cnv.addEventListener('touchmove', cameraMoveHandler);
-    cnv.addEventListener('touchend', cameraEndHandler);
+    contentDiv.addEventListener('touchmove', cameraMoveHandler);
+    contentDiv.addEventListener('touchend', cameraEndHandler);
 }
 
 const uiTouchListeners = (x, y) => {
@@ -1069,9 +1069,9 @@ const animalTouchListeners = (x, y) => {
     return false;
 }
 
-let targetBB = cnv.getBoundingClientRect();
+let targetBB = layers[0].cnv.getBoundingClientRect();
 
-cnv.addEventListener('touchstart', e => {
+const touched = e => {
     e.preventDefault();
 
     let startX = e.touches[0].pageX - targetBB.x + camera.x;
@@ -1080,11 +1080,13 @@ cnv.addEventListener('touchstart', e => {
     let x = startX;
     let y = startY;
 
-    if (uiTouchListeners(e.touches[0].pageX - targetBB.x, e.touches[0].pageY - targetBB.y)) return;
+    if (uiTouchListeners(e.touches[0].pageX - targetBB.x, e.touches[0].pageY - targetBB.y)) {
+        console.log('UI Hit');
+        return;
+    }
 
     if (state == 'playing') {
         if (tools[tool].act(x, y)) return;
         cameraTouchListeners(x, y, targetBB, startX, startY);
     }
-
-})
+}

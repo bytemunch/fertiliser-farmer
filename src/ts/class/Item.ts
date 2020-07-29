@@ -1,10 +1,9 @@
 import { WorldActor } from './WorldActor.js';
-import { IActorOptions, tileGrid, itemManifest, sprites, UIElements, randInRange, camera, dropManifest, Coin, cnv, XPDrop, ItemDrop, inventory } from '../main.js';
+import { IActorOptions, tileGrid, itemManifest, sprites, UIElements, randInRange, camera, dropManifest, Coin, XPDrop, ItemDrop, inventory, layers, LAYERNUMBERS } from '../main.js';
 
 export const newItemFromJSON = (data) => {
     return new Item({
         gridPosition: { gridX: data.gridX, gridY: data.gridY },
-        layer: data.layer,
         sprite: sprites[data.type + '-' + data.level],
         level: data.level,
         type: data.type
@@ -12,6 +11,7 @@ export const newItemFromJSON = (data) => {
 }
 export class Item extends WorldActor {
     level: number;
+    layer = LAYERNUMBERS.item;
     constructor(options?: IActorOptions) {
         super(options);
         this.width = 32;
@@ -41,9 +41,9 @@ export class Item extends WorldActor {
         return (tileGrid[this.gridX][this.gridY].tile.type == 'grass');
     }
 
-    draw(ctx, cam) {
+    draw() {
         if ((this.gridX == -1 || this.gridY == -1) || tileGrid[this.gridX][this.gridY].tile.type == 'grass')
-            return super.draw(ctx, cam);
+            return super.draw();
         return false;
     }
 
@@ -78,10 +78,9 @@ export class Item extends WorldActor {
                             top: this.screenY,
                             height: 16,
                             width: 16,
-                            layer: 5,
                             type: 'coin',
                             sprite: sprites.coin,
-                            targetPos: [cnv.width, 0],
+                            targetPos: [layers[0].cnv.width, 0],
                             value: 1
                         }))
                         break;
@@ -91,7 +90,6 @@ export class Item extends WorldActor {
                             top: this.screenY,
                             height: 16,
                             width: 16,
-                            layer: 5,
                             type: 'xp',
                             sprite: sprites.xp,
                             targetPos: [0, 0],
@@ -105,12 +103,11 @@ export class Item extends WorldActor {
                             top: this.screenY,
                             height: 16,
                             width: 16,
-                            layer: 5,
                             type: drop.split('-')[0],
                             sprite: sprites[drop],
-                            targetPos: [cnv.width / 2, 0],
+                            targetPos: [layers[0].cnv.width / 2, 0],
                             value: 1,
-                            finish: ()=>inventory.addByTypeAndLevel(drop.split('-')[0], drop.split('-')[1])
+                            finish: () => inventory.addByTypeAndLevel(drop.split('-')[0], drop.split('-')[1])
                         });
                         droppedItem.level = drop.split('-')[1];
                         UIElements.push(droppedItem);
@@ -129,7 +126,6 @@ export class Item extends WorldActor {
                 top: this.screenY,
                 height: 8,
                 width: 8,
-                layer: 5,
                 type: 'xp',
                 sprite: sprites.coin,
                 targetPos: [0, 0],
@@ -199,7 +195,6 @@ export class Item extends WorldActor {
                 else {
                     tileGrid[item.gridX][item.gridY].contents = new Item({
                         gridPosition: { gridX: item.gridX, gridY: item.gridY },
-                        layer: item.layer,
                         sprite: sprites[`${item.type}-${newLevel}`],
                         type: item.type,
                         level: newLevel
@@ -209,7 +204,6 @@ export class Item extends WorldActor {
             else if (i < numUpgraded + leftover) {
                 tileGrid[item.gridX][item.gridY].contents = new Item({
                     gridPosition: { gridX: item.gridX, gridY: item.gridY },
-                    layer: item.layer,
                     sprite: sprites[`${item.type}-${item.level}`],
                     type: item.type,
                     level: item.level

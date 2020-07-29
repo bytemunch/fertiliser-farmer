@@ -1,4 +1,4 @@
-import { viewScale, cnv, worldWidth, worldHeight } from '../main.js';
+import { viewScale, worldWidth, worldHeight, layers } from '../main.js';
 
 export class Camera {
     x: number = 0;
@@ -18,8 +18,8 @@ export class Camera {
     }
 
     resized() {
-        this.viewWidth = cnv.width + this.xOffset;
-        this.viewHeight = cnv.height + this.yOffset;
+        this.viewWidth = layers[0].cnv.width + this.xOffset;
+        this.viewHeight = layers[0].cnv.height + this.yOffset;
 
         //TODO magic numbers
         this.hBounds = (worldWidth * 64 * viewScale) - this.viewWidth + this.xOffset;

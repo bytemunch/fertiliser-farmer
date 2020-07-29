@@ -1,4 +1,4 @@
-import { viewScale, cnv, xpToCurrentLevel, xp, coins, startGame, inventory, UIElements, sprites, pickup, tileGrid, extraActors, levelManifest, xpBoundaryForLevel, ItemDrop, Coin, tool, tools, nextTool } from "../main.js";
+import { viewScale, xpToCurrentLevel, xp, coins, startGame, inventory, UIElements, sprites, pickup, tileGrid, extraActors, levelManifest, xpBoundaryForLevel, ItemDrop, Coin, tool, tools, nextTool, layers, LAYERNUMBERS } from "../main.js";
 import { Sprite } from "./Sprite.js";
 import { Item } from "./Item.js";
 
@@ -9,7 +9,8 @@ export class UIElement {
     bottom: number;
     width = 0;
     height = 0;
-    layer = 0;
+    layer = LAYERNUMBERS.ui;
+    z:number = 0;
     type: string;
     interactable: boolean;
     sprite: Sprite;
@@ -22,23 +23,21 @@ export class UIElement {
         for (let o in opts) {
             this[o] = opts[o];
         }
-        this.layer += 10000;
-
         this.updatePosition();
     }
 
     updatePosition() {
 
         if (this.centerX) {
-            this.left = cnv.width / 2 - this.width / 2 * viewScale;
+            this.left = layers[this.layer].cnv.width / 2 - this.width / 2 * viewScale;
         } else if (this.right != undefined) {
-            this.left = cnv.width - this.right - this.width * viewScale;
+            this.left = layers[this.layer].cnv.width - this.right - this.width * viewScale;
         }
 
         if (this.centerY) {
-            this.top = cnv.height / 2 - this.height / 2 * viewScale;
+            this.top = layers[this.layer].cnv.height / 2 - this.height / 2 * viewScale;
         } else if (this.bottom != undefined) {
-            this.top = cnv.height - this.bottom - this.height * viewScale;
+            this.top = layers[this.layer].cnv.height - this.bottom - this.height * viewScale;
         }
     }
 
@@ -86,7 +85,6 @@ export interface IUIOptions {
     centerY?: boolean;
     width: number;
     height: number;
-    layer: number;
     type: string;
     sprite: Sprite;
 }
@@ -281,11 +279,10 @@ class Screen extends UIElement {
 
     constructor() {
         super({
-            height: cnv.height * 0.8,
-            width: cnv.width * 0.9,
-            left: cnv.width * 0.05,
-            top: cnv.height * 0.1,
-            layer: 100000,
+            height: layers[0].cnv.height * 0.8,
+            width: layers[0].cnv.width * 0.9,
+            left: layers[0].cnv.width * 0.05,
+            top: layers[0].cnv.height * 0.1,
             sprite: null,
             type: 'screen'
         });
@@ -295,9 +292,8 @@ class Screen extends UIElement {
             width: 32,
             height: 32,
             type: 'button-close',
-            right: cnv.width * 0.05 - 8,
+            right: layers[this.layer].cnv.width * 0.05 - 8,
             top: this.top - 8,
-            layer: this.layer + 10
         }, this);
         UIElements.push(closeButton);
         this.children.push(closeButton);
@@ -310,10 +306,10 @@ class Screen extends UIElement {
     }
 
     updatePosition() {
-        this.width = cnv.width * 0.9;
-        this.left = cnv.width * 0.05;
-        this.height = cnv.height * 0.8;
-        this.top = cnv.height * 0.1;
+        this.width = layers[this.layer].cnv.width * 0.9;
+        this.left = layers[this.layer].cnv.width * 0.05;
+        this.height = layers[this.layer].cnv.height * 0.8;
+        this.top = layers[this.layer].cnv.height * 0.1;
     }
 
     destroy() {
@@ -323,7 +319,9 @@ class Screen extends UIElement {
         }
     }
 
-    drawBG(ctx) {
+    drawBG() {
+        let ctx = layers[this.layer].ctx;
+
         ctx.fillStyle = this.color1;
         ctx.fillRect(this.x, this.top, this.width, this.height);
 
@@ -345,7 +343,8 @@ class Screen extends UIElement {
         ctx.fillRect(this.x + this.width - 3 * this.borderw, this.top, this.borderw, this.height);
     }
 
-    drawTitle(ctx) {
+    drawTitle() {
+        let ctx = layers[this.layer].ctx;
         ctx.fillStyle = 'rgba(0,0,0,0.5)';
         let fontSize = 26;
         ctx.font = fontSize + 'px monospace';
@@ -354,9 +353,9 @@ class Screen extends UIElement {
         ctx.fillText(this.title, this.left + this.borderw * 3, this.top + fontSize * .75 + this.borderw * 3);
     }
 
-    draw(ctx) {
-        this.drawBG(ctx);
-        this.drawTitle(ctx);
+    draw() {
+        this.drawBG();
+        this.drawTitle();
     }
 }
 
@@ -397,7 +396,6 @@ export class InventoryScreen extends Screen {
                 sprite: sprites[i.type],
                 height: 32,
                 width: 32,
-                layer: this.layer + 9
             }, this)
 
             this.children.push(newItem);
@@ -422,7 +420,6 @@ class InventoryItem extends UIElement {
         // create item
         let item = new Item({
             gridPosition: { gridX: -1, gridY: -1 },
-            layer: 500,
             sprite: sprites[this.type],
             type: this.type.split('-')[0],
             level: Number(this.type.split('-')[1]),
@@ -477,7 +474,6 @@ class MenuScreen extends Screen {
     populate() {
         let clearBtn = new ClearButton({
             height: 60,
-            layer: this.layer + 10,
             sprite: sprites.clearButton,
             type: 'clear',
             width: 92,
@@ -541,7 +537,6 @@ export class LevelUpScreen extends Screen {
                 sprite: sprites[r],
                 height: 32,
                 width: 32,
-                layer: this.layer + 9,
             }, this)
 
             UIElements.push(newItem);
@@ -573,9 +568,8 @@ class RewardItem extends UIElement {
                 case 'coin':
                     newDrop = new Coin({
                         height: 8,
-                        layer: this.layer + 1,
                         sprite: sprites[this.type],
-                        targetPos: [cnv.width, 0],
+                        targetPos: [layers[this.layer].cnv.width, 0],
                         type: this.type,
                         value: 1,
                         width: 8,
@@ -586,9 +580,8 @@ class RewardItem extends UIElement {
                 case 'antifog':
                     newDrop = new ItemDrop({
                         height: 8,
-                        layer: this.layer + 1,
                         sprite: sprites[this.type],
-                        targetPos: [0, cnv.height],
+                        targetPos: [0, layers[this.layer].cnv.height],
                         type: this.type.split('-')[0],
                         level: this.type.split('-')[1],
                         value: 1,
@@ -601,9 +594,8 @@ class RewardItem extends UIElement {
                 default:
                     newDrop = new ItemDrop({
                         height: 8,
-                        layer: this.layer + 1,
                         sprite: sprites[this.type],
-                        targetPos: [cnv.width / 2, 0],
+                        targetPos: [layers[this.layer].cnv.width / 2, 0],
                         type: this.type.split('-')[0],
                         level: this.type.split('-')[1],
                         value: 1,
