@@ -11,7 +11,7 @@ export class Sprite {
 
     animate: string = 'loop';
     animationState: number = 0;
-    frameRate: number = 30;
+    _frameRate: number = Math.floor(60/1);
 
     img: HTMLImageElement;
 
@@ -42,6 +42,10 @@ export class Sprite {
         this.img.src = src;
     }
 
+    set frameRate(fr) {
+        this._frameRate = Math.floor(60/fr);
+    }
+
     draw() {
         const drawImage = () => {
             this.ctx.clearRect(0, 0, this.cnv.width, this.cnv.height);
@@ -54,7 +58,8 @@ export class Sprite {
                 // this.ctx.drawImage(this.img, 0, 0, this.spriteWidth, this.spriteHeight, 0, 0, this.cnv.width, this.cnv.height);
 
                 // animate
-                if (frameCount % this.frameRate == 0) {
+                // TODO don't depend on _frameRate
+                if (frameCount % this._frameRate == 0) {
                     this.ctx.clearRect(0, 0, this.cnv.width, this.cnv.height);
                     this.ctx.drawImage(this.img, this.animationState, 0, this.spriteWidth, this.spriteHeight, 0, 0, this.cnv.width, this.cnv.height);
                     this.animationState += this.spriteWidth;

@@ -4,7 +4,7 @@ import { WorldActor } from './class/WorldActor.js';
 import { Tile, newTileFromJSON } from './class/Tile.js';
 import { Item, newItemFromJSON } from './class/Item.js';
 import { Camera } from './class/Camera.js';
-import { IUIOptions, UIElement, Bank, CoinDisplay, XPDisplay, XPBall, PlayButton, DrawnSprite, InventoryButton, LevelUpScreen, ToolSelector } from './class/UIElements.js';
+import { IUIOptions, UIElement, Bank, CoinDisplay, XPDisplay, XPBall, PlayButton, DrawnSprite, InventoryButton, LevelUpScreen, ToolSelector, MenuButton } from './class/UIElements.js';
 import { Animal, Chicken, newAnimalFromJSON } from './class/Animal.js';
 
 export let DEBUG = {
@@ -29,7 +29,7 @@ let version;
 
 export let cnv = document.createElement('canvas');
 cnv.style.imageRendering = 'pixelated';
-let ctx = cnv.getContext('2d',{alpha:false});
+let ctx = cnv.getContext('2d', { alpha: false });
 ctx.imageSmoothingEnabled = false;
 
 window.addEventListener('resize', () => {
@@ -160,7 +160,7 @@ export class Coin extends Drop {
 export class ItemDrop extends Drop {
     level;
 
-    constructor(opts: IDropOptions & { level?: number | string , finish: ()=>void}) {
+    constructor(opts: IDropOptions & { level?: number | string, finish: () => void }) {
         super(opts);
 
         this.level = opts.level;
@@ -168,7 +168,7 @@ export class ItemDrop extends Drop {
 
     finish() {
         // set callback in options
-        console.log('no callback for ',this)
+        console.log('no callback for ', this)
     }
 
     destroy() {
@@ -258,12 +258,14 @@ class Tool {
             return false;
         }
         this.uses--;
+
+        saveGame();
         return true;
     }
 
     addUses(n) {
         this.uses += n;
-        console.log('use added',n);
+        console.log('use added', n);
     }
 }
 
@@ -271,8 +273,8 @@ class HandTool extends Tool {
     type = 'hand';
     uses = Infinity;
 
-    act(x,y) {
-        if (!super.act(x,y)) return false;
+    act(x, y) {
+        if (!super.act(x, y)) return false;
         if (animalTouchListeners(x, y)) return true;
         if (itemTouchListeners(x, y)) return true;
         return false;
@@ -281,17 +283,17 @@ class HandTool extends Tool {
 
 class AntiFog extends Tool {
     type = 'antifog';
-    uses = 10;
+    uses = 0;
 
     act(x, y) {
         // decrement uses
-        if (!super.act(x,y)) return false;
+        if (!super.act(x, y)) return false;
         // if fog is at x,y
         for (let tile of flattenArray(tileGrid)) {
-        // remove fog
+            // remove fog
             if (tile.baseClass != 'tile') continue;
             if (tile.type != 'fog') continue;
-            if (tile.collides(x,y)) {
+            if (tile.collides(x, y)) {
                 tileGrid[tile.gridX][tile.gridY].tile = new Tile({
                     gridPosition: { gridX: tile.gridX, gridY: tile.gridY },
                     layer: tile.layer,
@@ -310,7 +312,7 @@ class AntiFog extends Tool {
     }
 }
 
-export const tools = {
+export let tools = {
     antifog: new AntiFog,
     hand: new HandTool,
 }
@@ -326,10 +328,10 @@ export const nextTool = () => {
     let count = tIDs.length;
     let cIdx = tIDs.indexOf(tool);
 
-    if (cIdx >= count-1) {
-        tool=tIDs[0];
+    if (cIdx >= count - 1) {
+        tool = tIDs[0];
     } else {
-        tool=tIDs[cIdx+1];
+        tool = tIDs[cIdx + 1];
     }
 }
 
@@ -435,6 +437,9 @@ const loadSprites = () => {
     sprites.playButton = new Sprite('./img/graphics/btn_play.png', 182, 112);
     loadPromises.push(sprites.playButton.ready);
 
+    sprites.menuButton = new Sprite('./img/graphics/btn_menu.png', 92, 60);
+    loadPromises.push(sprites.menuButton.ready);
+
     sprites.title = new Sprite('./img/graphics/title.png', 320, 184);
     loadPromises.push(sprites.title.ready);
 
@@ -473,6 +478,7 @@ export const saveGame = (force?) => {
             tileGrid: saveData,
             inventory: inventory.toJSON(),
             animals: animals,
+            tools: tools,
             expandableSpaceHere: true
         }
 
@@ -488,6 +494,7 @@ const loadGame = () => {
     coins = saveData.coins;
     xp = saveData.xp;
     inventory.contents = saveData.inventory || {};
+    tools.antifog.addUses(saveData.tools.antifog.uses);
 
     for (let animal of saveData.animals) {
         animals.push(newAnimalFromJSON(animal))
@@ -571,6 +578,8 @@ export const startGame = () => {
     }
 
     addGameUI();
+
+    state = 'playing';
 }
 
 const createMainMenu = () => {
@@ -585,6 +594,16 @@ const createMainMenu = () => {
         layer: 10,
         sprite: sprites.playButton,
         type: 'play'
+    }))
+
+    UIElements.push(new MenuButton({
+        height: 60,
+        width:92,
+        top: 10,
+        right: 10,
+        layer: 10,
+        sprite: sprites.menuButton,
+        type: 'menu'
     }))
 
     UIElements.push(new DrawnSprite({
@@ -636,6 +655,10 @@ const createNewGame = () => {
     xp = 0;
     inventory = new Inventory;
     animals = [];
+    tools = {
+        antifog: new AntiFog,
+        hand: new HandTool,
+    };
 
     for (let i = 0; i < worldWidth; i++) {
         for (let j = 0; j < worldHeight; j++) {
@@ -750,7 +773,7 @@ const drawGame = () => {
     let drawnObjs = 0;
     for (let actor of flatArray) {
         (<WorldActor>actor).update();
-        (<WorldActor>actor).draw(ctx, camera);
+        if ((<WorldActor>actor).draw(ctx, camera)) drawnObjs++;
     }
 
     // UI
@@ -761,7 +784,7 @@ const drawGame = () => {
         el.draw(ctx);
     }
 
-    if (frameCount % 100 == 0) console.log(flatArray.length, UIElements.length, drawnObjs + UIElements.length)
+    // if (frameCount % 100 == 0) console.log(flatArray.length, UIElements.length, drawnObjs + UIElements.length)
 }
 
 const drawDebug = () => {
@@ -883,7 +906,7 @@ export const pickup = (dragged, callback?) => {
 
             tile.draggedOver = false;
 
-            if (tile.dragCollides(x, y)) {
+            if (tile.collides(x, y)) {
                 tile.draggedOver = true;
             }
         }
@@ -900,7 +923,7 @@ export const pickup = (dragged, callback?) => {
 
             tile.draggedOver = false;
 
-            if (tile.dragCollides(x, y)) {
+            if (tile.collides(x, y)) {
                 if (tile.contents && (tile.contents.type !== dragged.type || tile.contents.level !== dragged.level)) continue;
 
                 const moveItem = () => {
@@ -1014,12 +1037,9 @@ cnv.addEventListener('touchstart', e => {
 
     if (uiTouchListeners(e.touches[0].pageX - targetBB.x, e.touches[0].pageY - targetBB.y)) return;
 
-    if (tools[tool].act(x,y)) return;
+    if (state == 'playing') {
+        if (tools[tool].act(x, y)) return;
+        cameraTouchListeners(x, y, targetBB, startX, startY);
+    }
 
-
-
-
-    // TODO Loop through array again looking for interactable objects (sorted by layer)
-
-    cameraTouchListeners(x, y, targetBB, startX, startY);
 })

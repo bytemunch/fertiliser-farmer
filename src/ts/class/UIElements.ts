@@ -223,6 +223,17 @@ export class PlayButton extends UIElement {
     }
 }
 
+export class MenuButton extends UIElement {
+    interactable = true;
+    act() {
+        openScreen(new MenuScreen);
+    }
+
+    draw(ctx: CanvasRenderingContext2D) {
+        ctx.drawImage(this.img, this.left, this.top, this.width * viewScale, this.height * viewScale);
+    }
+}
+
 class CloseButton extends UIElement {
     interactable = true;
     target;
@@ -434,6 +445,13 @@ class BankScreen extends Screen {
     color1 = 'orange';
     color2 = 'green';
     type = 'screen-bank';
+}
+
+class MenuScreen extends Screen {
+    title = 'Menu';
+    color1 = '#68aed4';
+    color2 = '#234975';
+    type = 'screen-menu';
 }
 
 class RewardScreen extends Screen {

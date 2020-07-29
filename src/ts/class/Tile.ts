@@ -1,5 +1,6 @@
 import { WorldActor } from './WorldActor.js';
 import { IActorOptions, tileGrid, viewScale, sprites } from '../main.js';
+import { pointInPolygon } from '../functions/collision.js';
 
 export const newTileFromJSON = (data) => {
     return new Tile({
@@ -54,14 +55,32 @@ export class Tile extends WorldActor {
         return (this.gridY % 2) ? tileGrid[this.gridX - 1][this.gridY + 1] : tileGrid[this.gridX][this.gridY + 1];
     }
 
-    draw(ctx, cam) {
-        ctx.fillStyle = '#ff000088';
-        if (this.draggedOver)
-            ctx.fillRect(this.x - cam.x + (this.width / 3) * viewScale, this.y - cam.y - (this.height / 3) * viewScale, this.width * 1 / 3 * viewScale, this.height * viewScale);
-        return super.draw(ctx, cam);
+    get points() {
+        return [
+            [(<number>this._x) + this.width / 2, (<number>this._y)],
+            [(<number>this._x) + this.width, (<number>this._y) + this.height / 2],
+            [(<number>this._x) + this.width / 2, (<number>this._y) + this.height],
+            [(<number>this._x), (<number>this._y) + this.height / 2],
+        ]
     }
 
-    dragCollides(x, y) {
-        return (x > this.x + this.width / 3 && y > this.y - this.height / 3 && x < this.x + (this.width * (2 / 3)) * viewScale && y < this.y + (this.height - this.height / 3) * viewScale);
+    draw(ctx: CanvasRenderingContext2D, cam) {
+        if (!super.draw(ctx, cam)) return false;
+
+        if (this.draggedOver) {
+            ctx.fillStyle = '#ff000088';
+            ctx.beginPath();
+            ctx.moveTo(this.points[0][0] - cam.x, this.points[0][1] - cam.y);
+            for (let p of this.points) {
+                ctx.lineTo(p[0] - cam.x, p[1] - cam.y);
+            }
+            ctx.closePath();
+            ctx.fill();
+        }
+        return true;
+    }
+
+    collides(x, y) {
+        return pointInPolygon(this.points, [x, y]);
     }
 }
