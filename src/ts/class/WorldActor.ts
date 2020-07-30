@@ -1,5 +1,5 @@
 import { Sprite } from './Sprite.js';
-import { IActorOptions, viewScale, DEBUG, camera, layers } from '../main.js';
+import { IActorOptions, DEBUG, camera, layers } from '../main.js';
 export abstract class WorldActor {
     _x: number | false;
     _y: number | false;
@@ -65,14 +65,22 @@ export abstract class WorldActor {
         return this._y;
     }
 
+    get ctx():CanvasRenderingContext2D {
+        return layers[this.layer].ctx;
+    }
+
+    get cnv():HTMLCanvasElement {
+        return layers[this.layer].cnv;
+    }
+
     draw() {
         if (this.visible) {
             try {
-            layers[this.layer].ctx.drawImage(this.img, Math.floor(this.x - camera.x), Math.floor(this.y - camera.y));
+            layers[this.layer].ctx.drawImage(this.img, Math.floor(this.x), Math.floor(this.y));
             } catch(e) {
                 console.info(this.layer);
             }
-            if (DEBUG.boundingBoxes) layers[this.layer].ctx.strokeRect(this.x - camera.x, this.y - camera.y, this.width * viewScale, this.height * viewScale);
+            if (DEBUG.boundingBoxes) layers[this.layer].ctx.strokeRect(this.x, this.y, this.width, this.height);
             return true;
         }
 
@@ -80,15 +88,11 @@ export abstract class WorldActor {
     }
 
     update() {
-        this.visible = this.inView();
-    }
-
-    inView() {
-        return (this.x + camera.xOffset > camera.x && this.x < camera.x + camera.viewWidth
-            && this.y + camera.yOffset > camera.y && this.y < camera.y + camera.viewHeight);
+        this.visible = camera.inView(this);
+        // this.visible = true; // camera testing, render everything
     }
 
     collides(x, y) {
-        return (x > this.x && y > this.y && x < this.x + this.width * viewScale && y < this.y + this.height * viewScale);
+        return (x > this.x * camera.scale && y > this.y * camera.scale && x < (this.x + this.width)*camera.scale && y < (this.y + this.height)*camera.scale);
     }
 }

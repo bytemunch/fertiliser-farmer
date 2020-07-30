@@ -1,4 +1,4 @@
-import { viewScale, frameCount } from "../main.js";
+import { frameCount } from "../main.js";
 
 export class Sprite {
     cnv: OffscreenCanvas;
@@ -29,8 +29,8 @@ export class Sprite {
 
         this.ready = new Promise(res => {
             this.img.addEventListener('load', () => {
-                this.cnv.width = w * viewScale;
-                this.cnv.height = h * viewScale;
+                this.cnv.width = w;
+                this.cnv.height = h;
 
                 this.sheetWidth = this.img.width;
 

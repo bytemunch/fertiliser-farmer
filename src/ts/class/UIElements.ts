@@ -1,4 +1,4 @@
-import { viewScale, xpToCurrentLevel, xp, coins, startGame, inventory, UIElements, sprites, pickup, tileGrid, extraActors, levelManifest, xpBoundaryForLevel, ItemDrop, Coin, tool, tools, nextTool, layers, LAYERNUMBERS, clearLayer } from "../main.js";
+import { xpToCurrentLevel, xp, coins, startGame, inventory, UIElements, sprites, pickup, tileGrid, extraActors, levelManifest, xpBoundaryForLevel, ItemDrop, Coin, tool, tools, nextTool, layers, LAYERNUMBERS, clearLayer } from "../main.js";
 import { Sprite } from "./Sprite.js";
 import { Item } from "./Item.js";
 
@@ -34,15 +34,15 @@ export class UIElement {
     updatePosition() {
 
         if (this.centerX) {
-            this.left = layers[this.layer].cnv.width / 2 - this.width / 2 * viewScale;
+            this.left = layers[this.layer].cnv.width / 2 - this.width / 2;
         } else if (this.right != undefined) {
-            this.left = layers[this.layer].cnv.width - this.right - this.width * viewScale;
+            this.left = layers[this.layer].cnv.width - this.right - this.width;
         }
 
         if (this.centerY) {
-            this.top = layers[this.layer].cnv.height / 2 - this.height / 2 * viewScale;
+            this.top = layers[this.layer].cnv.height / 2 - this.height / 2;
         } else if (this.bottom != undefined) {
-            this.top = layers[this.layer].cnv.height - this.bottom - this.height * viewScale;
+            this.top = layers[this.layer].cnv.height - this.bottom - this.height;
         }
     }
 
@@ -53,7 +53,7 @@ export class UIElement {
 
     draw() {
         let ctx = layers[this.layer].ctx;
-        ctx.drawImage(this.img, this.left, this.top, this.width * viewScale, this.height * viewScale);
+        ctx.drawImage(this.img, this.left, this.top, this.width, this.height);
     }
 
     clear() {
@@ -65,6 +65,14 @@ export class UIElement {
         UIElements.splice(UIElements.indexOf(this), 1);
     }
 
+    get ctx():CanvasRenderingContext2D {
+        return layers[this.layer].ctx;
+    }
+
+    get cnv():HTMLCanvasElement {
+        return layers[this.layer].cnv;
+    }
+    
     get img() {
         try {
             return this.sprite.cnv;
@@ -82,7 +90,7 @@ export class UIElement {
     }
 
     collidePoint(x, y) {
-        return (x > this.x && y > this.y && x < this.x + this.width * viewScale && y < this.y + this.height * viewScale);
+        return (x > this.x && y > this.y && x < this.x + this.width && y < this.y + this.height);
 
     }
 }
@@ -122,7 +130,7 @@ export class ToolSelector extends UIElement {
     draw() {
         let ctx = layers[this.layer].ctx;
 
-        ctx.drawImage(this.img, this.left, this.top, this.width * viewScale, this.height * viewScale);
+        ctx.drawImage(this.img, this.left, this.top, this.width, this.height);
         ctx.drawImage(sprites[tool].img, this.left + 16, this.top + 16, 32, 32);
         ctx.fillStyle = 'rgba(0,0,0,0.5)';
         ctx.fillRect(this.left, this.top - 20, this.width, 20);
@@ -159,7 +167,7 @@ export class XPBall extends UIElement {
     draw() {
         let ctx = layers[this.layer].ctx;
 
-        ctx.drawImage(this.img, this.left, this.top, this.width * viewScale, this.height * viewScale);
+        ctx.drawImage(this.img, this.left, this.top, this.width, this.height);
 
         let level = xpToCurrentLevel(xp);
 
@@ -188,7 +196,7 @@ export class CoinDisplay extends UIElement {
         let ctx = layers[this.layer].ctx;
 
         ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillRect(this.left, this.top, this.width * viewScale, this.height * viewScale);
+        ctx.fillRect(this.left, this.top, this.width, this.height);
 
         let fontSize = 16;
         ctx.font = `${fontSize}px monospace`;
@@ -203,7 +211,7 @@ export class XPDisplay extends UIElement {
         let ctx = layers[this.layer].ctx;
 
         ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillRect(this.left, this.top, this.width * viewScale, this.height * viewScale);
+        ctx.fillRect(this.left, this.top, this.width, this.height);
 
         let fontSize = 16;
         ctx.font = `${fontSize}px monospace`;

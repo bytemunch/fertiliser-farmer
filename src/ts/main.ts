@@ -36,7 +36,7 @@ let numLayers = 4;
 for (let i = 0; i < numLayers; i++) {
     let newCnv = document.createElement('canvas');
     let opts = {};
-    if (i == 0) opts = {alpha:false};
+    if (i == 0) opts = { alpha: false };
     layers.push({ cnv: newCnv, ctx: newCnv.getContext('2d', opts) });
 }
 
@@ -149,7 +149,7 @@ export class Drop extends UIElement {
             this.top += this.targetDirection[1] * (this.mag / 3) * fElapsedTime;
         }
 
-        if (this.left > layers[0].cnv.width || this.top > layers[0].cnv.height || this.left < 0 || this.top < 0) this.removeNextDraw = true;
+        if (this.left > camera.right || this.top > camera.bottom || this.left < camera.x || this.top < camera.y) this.removeNextDraw = true;
     }
 
     draw() {
@@ -160,7 +160,7 @@ export class Drop extends UIElement {
     }
 
     destroy() {
-        extraActors.splice(extraActors.indexOf(this),1);
+        extraActors.splice(extraActors.indexOf(this), 1);
     }
 }
 
@@ -205,8 +205,6 @@ export class ItemDrop extends Drop {
 export let worldWidth = 50;
 
 export let worldHeight = worldWidth * 2;
-
-export let viewScale = 1;
 
 export let dropManifest = {
     coin: Coin,
@@ -369,14 +367,6 @@ const levelUp = () => {
     // console.log('Reward screen not implemented!', levelManifest[lvl]);
 }
 
-if (DEBUG.editVars) {
-    globalThis.addXp = addXp;
-    globalThis.xpToCurrentLevel = xpToCurrentLevel;
-    globalThis.addChickenAtPos = pos => {
-        animals.push(new Chicken(pos));
-    }
-}
-
 export interface IActorOptions {
     gridPosition: { gridX: number, gridY: number },
     sprite: Sprite,
@@ -403,6 +393,15 @@ export let UIElements: any[] = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     loaded();
+
+    if (DEBUG.editVars) {
+        globalThis.addXp = addXp;
+        globalThis.xpToCurrentLevel = xpToCurrentLevel;
+        globalThis.addChickenAtPos = pos => {
+            animals.push(new Chicken(pos));
+        }
+        globalThis.camera = camera;
+    }
 })
 
 const loadSprites = () => {
@@ -814,8 +813,8 @@ export let animals: Animal[] = [];
 let drawnObjs = 0;
 
 const drawTiles = () => {
-    if (camera.moved || frameCount % Math.floor(60/TILE_FRAMERATE) == 0) {
-        tileGrid.flat().filter(t => t.tile.visible).sort((a, b) => (a.tile.y - b.tile.y)).forEach(t => t.tile.draw());
+    if (camera.moved || frameCount % Math.floor(60 / TILE_FRAMERATE) == 0) {
+        camera.drawObjects(tileGrid.flat().filter(t => t.tile.visible).sort((a, b) => (a.tile.y - b.tile.y)).map(gt => gt.tile));
         camera.moved = false;
     }
     if (loop) requestAnimationFrame(drawTiles);
@@ -828,14 +827,15 @@ const updateTiles = () => {
 
 const drawItems = () => {
     clearLayer('item');
-    tileGrid.forEach(col => col.filter(t => t.contents?.visible).sort((a, b) => (a.contents.y - b.contents.y)).forEach(t => t.contents.draw()));
-    extraActors.forEach(a => { a.removeNextDraw ? a.destroy() : a.draw() });
+    camera.drawObjects(tileGrid.flat().filter(t => t.contents?.visible).sort((a, b) => (a.contents.y - b.contents.y)).map(gt => gt.contents));
+    camera.drawObjects(extraActors);
     if (loop) requestAnimationFrame(drawItems);
 }
 
 const updateItems = () => {
     tileGrid.forEach(col => col.filter(t => t.contents).forEach(i => i.contents.update()));
-    extraActors.forEach(i=>i.update());
+    extraActors.forEach(a => { if (a.removeNextDraw) a.destroy() });
+    extraActors.forEach(i => i.update());
     if (loop) requestAnimationFrame(updateItems);
 }
 
@@ -845,7 +845,7 @@ const drawUI = () => {
     // UI
     UIElements.forEach(el => { if (el.removeNextDraw) el.destroy() });
 
-    for (let el of UIElements.sort((a,b)=>a.z - b.z)) {
+    for (let el of UIElements.sort((a, b) => a.z - b.z)) {
         el.clear();
         el.draw();
     }
@@ -959,9 +959,11 @@ export const pickup = (dragged, callback?) => {
         if (y > layers[0].cnv.height * 0.9 + camera.y) camera.move(0, 5);
         if (y < layers[0].cnv.height * 0.1 + camera.y) camera.move(0, -5);
 
+        x *= 1/camera.scale;
+        y *= 1/camera.scale;
 
-        dragged._x = x - (dragged.width / 2) * viewScale;
-        dragged._y = y - (dragged.height / 2) * viewScale;
+        dragged._x = x - dragged.width/2 * camera.scale;
+        dragged._y = y - dragged.width/2 * camera.scale;
 
         for (let gtile of tileGrid.flat()) {
             let tile = gtile.tile;

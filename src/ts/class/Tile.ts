@@ -1,5 +1,5 @@
 import { WorldActor } from './WorldActor.js';
-import { IActorOptions, tileGrid, viewScale, sprites, layers, camera, LAYERNUMBERS } from '../main.js';
+import { IActorOptions, tileGrid, sprites, layers, camera, LAYERNUMBERS } from '../main.js';
 import { pointInPolygon } from '../functions/collision.js';
 
 export const newTileFromJSON = (data) => {
@@ -72,9 +72,9 @@ export class Tile extends WorldActor {
             const ctx = layers[this.layer].ctx;
             ctx.fillStyle = '#ff000088';
             ctx.beginPath();
-            ctx.moveTo(this.points[0][0] - camera.x, this.points[0][1] - camera.y);
+            ctx.moveTo(this.points[0][0], this.points[0][1]);
             for (let p of this.points) {
-                ctx.lineTo(p[0] - camera.x, p[1] - camera.y);
+                ctx.lineTo(p[0], p[1]);
             }
             ctx.closePath();
             ctx.fill();

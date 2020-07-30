@@ -54,14 +54,6 @@ export class Item extends WorldActor {
         return connected.filter(item => item && item.type == targetType && item.level == targetLevel && tileGrid[item.gridX][item.gridY].tile.type == 'grass');
     }
 
-    get screenX() {
-        return this.x - camera.x;
-    }
-
-    get screenY() {
-        return this.y - camera.y;
-    }
-
     complete() {
         // console.log('Not implemented: Item Completed');
         // Use drop table here
@@ -74,8 +66,8 @@ export class Item extends WorldActor {
                 switch (drop) {
                     case 'coin':
                         extraActors.push(new Coin({
-                            left: this.screenX,
-                            top: this.screenY,
+                            left: this.x,
+                            top: this.y,
                             height: 16,
                             width: 16,
                             type: 'coin',
@@ -86,8 +78,8 @@ export class Item extends WorldActor {
                         break;
                     case 'xp':
                         extraActors.push(new XPDrop({
-                            left: this.screenX,
-                            top: this.screenY,
+                            left: this.x,
+                            top: this.y,
                             height: 16,
                             width: 16,
                             type: 'xp',
@@ -99,8 +91,8 @@ export class Item extends WorldActor {
                         break;
                     default:
                         let droppedItem = new ItemDrop({
-                            left: this.screenX,
-                            top: this.screenY,
+                            left: this.x,
+                            top: this.y,
                             height: 16,
                             width: 16,
                             type: drop.split('-')[0],
@@ -122,8 +114,8 @@ export class Item extends WorldActor {
         let numBalls = numUpgraded * (itemManifest[this.type].dropTable.xp[0] / 10) * this.level;
         for (let i = 0; i < numBalls; i++) {
             extraActors.push(new XPDrop({
-                left: this.screenX,
-                top: this.screenY,
+                left: this.x,
+                top: this.y,
                 height: 8,
                 width: 8,
                 type: 'xp',
