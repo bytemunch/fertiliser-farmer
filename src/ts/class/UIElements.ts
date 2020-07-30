@@ -1,4 +1,4 @@
-import { xpToCurrentLevel, xp, coins, startGame, inventory, UIElements, sprites, pickup, tileGrid, extraActors, levelManifest, xpBoundaryForLevel, ItemDrop, Coin, tool, tools, nextTool, layers, LAYERNUMBERS, clearLayer } from "../main.js";
+import { xpToCurrentLevel, xp, coins, startGame, inventory, UIElements, sprites, pickup, tileGrid, extraActors, levelManifest, xpBoundaryForLevel, ItemDrop, Coin, tool, tools, nextTool, layers, LAYERNUMBERS, clearLayer, camera } from "../main.js";
 import { Sprite } from "./Sprite.js";
 import { Item } from "./Item.js";
 
@@ -72,7 +72,7 @@ export class UIElement {
     get cnv():HTMLCanvasElement {
         return layers[this.layer].cnv;
     }
-    
+
     get img() {
         try {
             return this.sprite.cnv;
@@ -127,6 +127,11 @@ export class ToolSelector extends UIElement {
         nextTool();
     }
 
+    clear() {
+        let ctx = layers[this.layer].ctx;
+        ctx.clearRect(this.x, this.y-20, this.width, this.height+20);
+    }
+
     draw() {
         let ctx = layers[this.layer].ctx;
 
@@ -136,8 +141,9 @@ export class ToolSelector extends UIElement {
         ctx.fillRect(this.left, this.top - 20, this.width, 20);
         ctx.font = '16px monospace';
         ctx.fillStyle = 'white';
-        let textBB = ctx.measureText(tools[tool].uses.toString());
-        ctx.fillText(tools[tool].uses.toString(), this.left + this.width / 2 - textBB.width / 2, this.top - 4);
+        let txtStr = tools[tool].uses.toString() == 'Infinity' ? '∞' : tools[tool].uses.toString();
+        let textBB = ctx.measureText(txtStr);
+        ctx.fillText(txtStr, this.left + this.width / 2 - textBB.width / 2, this.top - 4);
     }
 }
 
@@ -574,10 +580,11 @@ class RewardItem extends UIElement {
     destroy() {
         super.destroy();
 
+        console.log('droppin');
         for (let i = 0; i < this.count; i++) {
             let newDrop;
-            let dropLeft = this.left + this.width / 2;
-            let dropTop = this.top + this.height / 2;
+            let dropLeft = (this.left + camera.x)*1/camera.scale;
+            let dropTop = (this.top + camera.y)*1/camera.scale;
 
 
             switch (this.type) {
@@ -585,7 +592,7 @@ class RewardItem extends UIElement {
                     newDrop = new Coin({
                         height: 8,
                         sprite: sprites[this.type],
-                        targetPos: [layers[this.layer].cnv.width, 0],
+                        targetPos: [camera.right, 0],
                         type: this.type,
                         value: 1,
                         width: 8,
@@ -597,7 +604,7 @@ class RewardItem extends UIElement {
                     newDrop = new ItemDrop({
                         height: 8,
                         sprite: sprites[this.type],
-                        targetPos: [0, layers[this.layer].cnv.height],
+                        targetPos: [0, camera.bottom],
                         type: this.type.split('-')[0],
                         level: this.type.split('-')[1],
                         value: 1,
@@ -611,7 +618,7 @@ class RewardItem extends UIElement {
                     newDrop = new ItemDrop({
                         height: 8,
                         sprite: sprites[this.type],
-                        targetPos: [layers[this.layer].cnv.width / 2, 0],
+                        targetPos: [camera.x + camera.viewWidth/2, 0],
                         type: this.type.split('-')[0],
                         level: this.type.split('-')[1],
                         value: 1,
@@ -624,7 +631,7 @@ class RewardItem extends UIElement {
                     break;
             }
 
-            UIElements.push(newDrop);
+            extraActors.push(newDrop);
         }
     }
 

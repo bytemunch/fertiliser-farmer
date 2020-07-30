@@ -29,7 +29,6 @@ export class Camera {
         return (layers[0].cnv.width + this.xOffset) * 1 / this.scale;
     }
 
-
     get viewHeight() {
         // if (this.scale < 1) return (layers[0].cnv.height + this.yOffset) * this.scale;
         return (layers[0].cnv.height + this.yOffset) * 1 / this.scale;
