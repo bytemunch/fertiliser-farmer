@@ -1,6 +1,7 @@
 import { viewScale, worldWidth, worldHeight, layers } from '../main.js';
 
 export class Camera {
+    moved:boolean = true;
     x: number = 0;
     y: number = 0;
     viewWidth: number;
@@ -29,6 +30,7 @@ export class Camera {
     }
 
     move(xAmt = 0, yAmt = 0) {
+        this.moved = true;
         if (this.x + xAmt > this.hBounds) {
             this.x = this.hBounds;
         }

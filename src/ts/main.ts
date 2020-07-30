@@ -27,6 +27,8 @@ export let LAYERNUMBERS = {
     debug: 3
 }
 
+const TILE_FRAMERATE = 3;
+
 export let layers = [];
 
 let numLayers = 4;
@@ -37,8 +39,6 @@ for (let i = 0; i < numLayers; i++) {
     if (i == 0) opts = {alpha:false};
     layers.push({ cnv: newCnv, ctx: newCnv.getContext('2d', opts) });
 }
-
-console.log(layers);
 
 window.addEventListener('resize', () => {
 
@@ -133,11 +133,9 @@ export class Drop extends UIElement {
         ]
     }
 
-    draw() {
-        let ctx = layers[this.layer].ctx;
-
+    update() {
         this.age += fElapsedTime * 5;
-        ctx.drawImage(this.img, this.left, this.top, this.img.width, this.img.height);
+
         if (this.age < 10) {
             this.top += this.directionVector[1] * fElapsedTime * 5;
         } else if (this.age < 20) {
@@ -152,6 +150,13 @@ export class Drop extends UIElement {
         }
 
         if (this.left > layers[0].cnv.width || this.top > layers[0].cnv.height || this.left < 0 || this.top < 0) this.removeNextDraw = true;
+    }
+
+    draw() {
+        let ctx = layers[this.layer].ctx;
+
+        ctx.drawImage(this.img, this.left, this.top, this.img.width, this.img.height);
+
     }
 
     destroy() {
@@ -405,11 +410,10 @@ const loadSprites = () => {
     let loadPromises: Promise<any>[] = [];
 
     sprites.grass = new Sprite('./img/tiles/grass.png', 64, 96);
-    sprites.grass.frameRate = 3;
     loadPromises.push(sprites.grass.ready);
 
     sprites.water = new Sprite('./img/tiles/water.png', 64, 32);
-    sprites.water.frameRate = 3;
+    sprites.water.frameRate = TILE_FRAMERATE;
     loadPromises.push(sprites.water.ready);
 
     sprites.fog = new Sprite('./img/tiles/fog.png', 64, 96);
@@ -627,6 +631,7 @@ window.addEventListener('popstate', e => {
 
 const createMainMenu = () => {
     cleanupArrays();
+    clearLayer('ui');
     state = 'mainmenu';
     //@ts-ignore
     window.location = '#' + state;
@@ -810,7 +815,10 @@ export let animals: Animal[] = [];
 let drawnObjs = 0;
 
 const drawTiles = () => {
-    tileGrid.flat().filter(t => t.tile.visible).sort((a, b) => (a.tile.y - b.tile.y)).forEach(t => t.tile.draw());
+    if (camera.moved || frameCount % Math.floor(60/TILE_FRAMERATE) == 0) {
+        tileGrid.flat().filter(t => t.tile.visible).sort((a, b) => (a.tile.y - b.tile.y)).forEach(t => t.tile.draw());
+        camera.moved = false;
+    }
     if (loop) requestAnimationFrame(drawTiles);
 }
 
@@ -828,6 +836,7 @@ const drawItems = () => {
 
 const updateItems = () => {
     tileGrid.forEach(col => col.filter(t => t.contents).forEach(i => i.contents.update()));
+    extraActors.forEach(i=>i.update());
     if (loop) requestAnimationFrame(updateItems);
 }
 
@@ -939,6 +948,8 @@ export const pickup = (dragged, callback?) => {
     const moveHandler = e => {
         e.preventDefault();
 
+        camera.moved = true; // force tile redraw
+
         if (dragged.gridX != -1 && dragged.gridY != -1) tileGrid[dragged.gridX][dragged.gridY].contents = null;
 
         x = e.touches[0].pageX - targetBB.x + camera.x;
@@ -969,6 +980,8 @@ export const pickup = (dragged, callback?) => {
     const endHandler = e => {
         e.preventDefault();
         let goodMove = false;
+
+        camera.moved = true; // force tile redraw
 
         for (let gtile of tileGrid.flat()) {
             let tile = gtile.tile;
