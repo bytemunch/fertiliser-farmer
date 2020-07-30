@@ -290,7 +290,6 @@ class Tool {
 
     addUses(n) {
         this.uses += n;
-        console.log('use added', n);
     }
 }
 
@@ -731,7 +730,7 @@ const clearAllLayers = () => {
     }
 }
 
-const clearLayer = l => {
+export const clearLayer = l => {
     if (typeof l == 'string') l = LAYERNUMBERS[l];
     layers[l].ctx.clearRect(0, 0, layers[l].cnv.width, layers[l].cnv.height);
 }
@@ -846,9 +845,9 @@ const drawUI = () => {
     // UI
     UIElements.forEach(el => { if (el.removeNextDraw) el.destroy() });
 
-    for (let el of UIElements) {
+    for (let el of UIElements.sort((a,b)=>a.z - b.z)) {
         el.clear();
-        el.draw(layers[0].ctx);
+        el.draw();
     }
 
     // if (frameCount % 100 == 0) console.log(flatArray.length, UIElements.length, drawnObjs + UIElements.length)
@@ -1043,7 +1042,6 @@ const itemTouchListeners = (x, y) => {
 
         if (actor && actor.draggable && actor.collides(x, y)) {
             pickup(actor);
-            console.log('item hit')
             return true;
         }
     }
@@ -1052,7 +1050,6 @@ const itemTouchListeners = (x, y) => {
 }
 
 let cameraTouchListeners = (x, y, targetBB, startX, startY) => {
-    console.log('falling back to camera')
     // camera move listeners
     const cameraMoveHandler = e => {
         e.preventDefault();
@@ -1076,8 +1073,7 @@ let cameraTouchListeners = (x, y, targetBB, startX, startY) => {
 }
 
 const uiTouchListeners = (x, y) => {
-    UIElements.sort((a, b) => b.layer - a.layer);
-    for (let el of UIElements) {
+    for (let el of UIElements.sort((a, b) => b.x - a.x)) {
         if (el.collidePoint(x, y)) {
             if (!el.interactable) return true; // eat input
             el.act();
@@ -1104,7 +1100,6 @@ const touched = e => {
     let y = startY;
 
     if (uiTouchListeners(e.touches[0].pageX - targetBB.x, e.touches[0].pageY - targetBB.y)) {
-        console.log('UI Hit');
         return;
     }
 

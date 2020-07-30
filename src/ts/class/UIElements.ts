@@ -1,6 +1,11 @@
-import { viewScale, xpToCurrentLevel, xp, coins, startGame, inventory, UIElements, sprites, pickup, tileGrid, extraActors, levelManifest, xpBoundaryForLevel, ItemDrop, Coin, tool, tools, nextTool, layers, LAYERNUMBERS } from "../main.js";
+import { viewScale, xpToCurrentLevel, xp, coins, startGame, inventory, UIElements, sprites, pickup, tileGrid, extraActors, levelManifest, xpBoundaryForLevel, ItemDrop, Coin, tool, tools, nextTool, layers, LAYERNUMBERS, clearLayer } from "../main.js";
 import { Sprite } from "./Sprite.js";
 import { Item } from "./Item.js";
+
+const zIdxs = {
+    screen: 10,
+    screenChild: 20
+}
 
 export class UIElement {
     left = 0;
@@ -10,7 +15,7 @@ export class UIElement {
     width = 0;
     height = 0;
     layer = LAYERNUMBERS.ui;
-    z:number = 0;
+    z: number = 0;
     type: string;
     interactable: boolean;
     sprite: Sprite;
@@ -226,6 +231,8 @@ export class MenuButton extends UIElement {
 
 export class ClearButton extends UIElement {
     interactable = true;
+    z = zIdxs.screenChild;
+
     constructor(opts: IUIOptions) {
         super(opts);
 
@@ -244,6 +251,7 @@ export class ClearButton extends UIElement {
 class CloseButton extends UIElement {
     interactable = true;
     target;
+    z = zIdxs.screenChild;
     constructor(opts: IUIOptions, target) {
         super(opts);
         this.target = target;
@@ -259,6 +267,8 @@ class Screen extends UIElement {
     children = [];
     items = [];
     borderw = 4;
+
+    z = zIdxs.screen;
 
     color1 = 'lightblue';
     color2 = 'orange';
@@ -305,6 +315,7 @@ class Screen extends UIElement {
         for (let c of this.children) {
             c.destroy();
         }
+        clearLayer('ui');
     }
 
     drawBG() {
@@ -395,6 +406,7 @@ export class InventoryScreen extends Screen {
 class InventoryItem extends UIElement {
     interactable = true;
     parentScreen: InventoryScreen;
+    z = zIdxs.screenChild;
 
     constructor(opts: IUIOptions, parentScreen: InventoryScreen) {
         super(opts);
@@ -425,6 +437,11 @@ class InventoryItem extends UIElement {
         // close inventory
 
         this.parentScreen.removeNextDraw = true;
+    }
+
+
+    clear() {
+        return;
     }
 
     draw() {
@@ -538,6 +555,7 @@ export class LevelUpScreen extends Screen {
 class RewardItem extends UIElement {
     parentScreen: RewardScreen;
     count: number;
+    z = zIdxs.screenChild;
 
     constructor(opts: { count: number } & IUIOptions, parentScreen: RewardScreen) {
         super(opts);
