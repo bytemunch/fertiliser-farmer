@@ -41,13 +41,14 @@ for (let i = 0; i < numLayers; i++) {
 }
 
 window.addEventListener('resize', () => {
+    let dpi = devicePixelRatio;
+    targetBB = contentDiv.getBoundingClientRect();
 
     for (let c of layers) {
-        c.cnv.height = window.innerHeight;
-        c.cnv.width = window.innerWidth;
+        c.cnv.height = Math.floor(targetBB.height * dpi);
+        c.cnv.width = Math.floor(targetBB.width * dpi);
     }
 
-    targetBB = layers[0].cnv.getBoundingClientRect();
 
     camera.resized();
 
@@ -935,6 +936,13 @@ const handleInput = () => {
     } else if (keysHeld['d']) {
         camera.move(moveSpeed, 0);
     }
+    if (keysHeld['+'] || keysHeld['=']) {
+        camera.scale += 0.01;
+        camera.moved = true;
+    } else if (keysHeld['-']) {
+        camera.scale -= 0.01;
+        camera.moved = true;
+    }
 }
 
 export const pickup = (dragged, callback?) => {
@@ -959,11 +967,11 @@ export const pickup = (dragged, callback?) => {
         if (y > layers[0].cnv.height * 0.9 + camera.y) camera.move(0, 5);
         if (y < layers[0].cnv.height * 0.1 + camera.y) camera.move(0, -5);
 
-        x *= 1/camera.scale;
-        y *= 1/camera.scale;
+        x *= 1 / camera.scale;
+        y *= 1 / camera.scale;
 
-        dragged._x = x - dragged.width/2 * camera.scale;
-        dragged._y = y - dragged.width/2 * camera.scale;
+        dragged._x = x - dragged.width / 2 * camera.scale;
+        dragged._y = y - dragged.width / 2 * camera.scale;
 
         for (let gtile of tileGrid.flat()) {
             let tile = gtile.tile;

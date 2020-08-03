@@ -579,8 +579,6 @@ class RewardItem extends UIElement {
 
     destroy() {
         super.destroy();
-
-        console.log('droppin');
         for (let i = 0; i < this.count; i++) {
             let newDrop;
             let dropLeft = (this.left + camera.x)*1/camera.scale;
