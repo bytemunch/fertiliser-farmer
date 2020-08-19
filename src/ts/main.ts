@@ -1,17 +1,22 @@
 import { makeNoise3D } from '../lib/osn.js';
 import { Sprite } from './class/Sprite.js';
-import { WorldActor } from './class/WorldActor.js';
 import { Tile, newTileFromJSON } from './class/Tile.js';
 import { Item, newItemFromJSON } from './class/Item.js';
 import { Camera } from './class/Camera.js';
-import { IUIOptions, UIElement, Bank, CoinDisplay, XPDisplay, XPBall, PlayButton, InventoryButton, LevelUpScreen, ToolSelector, MenuButton } from './class/UIElements.js';
+import { UIElement, Bank, CoinDisplay, XPDisplay, XPBall, PlayButton, InventoryButton, LevelUpScreen, ToolSelector, MenuButton } from './class/UIElements.js';
 import { Animal, Chicken, newAnimalFromJSON } from './class/Animal.js';
+import { Inventory } from './class/Inventory.js';
+import { Coin, XPDrop } from './class/Drop.js';
+import { HandTool } from './class/HandTool.js';
+import { AntiFog } from './class/AntiFog.js';
 
 export let DEBUG = {
     boundingBoxes: false,
     showInfo: true,
     editVars: true
 }
+
+// br1 ================================= INIT ====================================
 
 let version;
 
@@ -30,9 +35,11 @@ export let LAYERNUMBERS = {
 const TILE_FRAMERATE = 3;
 
 export let layers = [];
+export let extraActors = [];
 
 let numLayers = 4;
 
+// Initialise canvases
 for (let i = 0; i < numLayers; i++) {
     let newCnv = document.createElement('canvas');
     let opts = {};
@@ -49,7 +56,6 @@ window.addEventListener('resize', () => {
         c.cnv.width = Math.floor(targetBB.width * dpi);
     }
 
-
     camera.resized();
 
     UIElements.forEach(el => el.updatePosition())
@@ -61,147 +67,7 @@ let loop = false;
 
 let state = '';
 
-interface IInventoryContents {
-    [itemTypeAndLevel: string]: number
-}
-
-class Inventory {
-    contents: IInventoryContents = {
-    };
-
-    addItem(item: Item) {
-        this.addByTypeAndLevel(item.type, item.level);
-    }
-
-    removeItem(item: Item) {
-        this.removeByTypeAndLevel(item.type, item.level);
-    }
-
-    addByTypeAndLevel(type, level) {
-        let typeStr = type + '-' + level;
-        if (!this.contents[typeStr]) this.contents[typeStr] = 0;
-        this.contents[typeStr]++;
-    }
-
-    removeByTypeAndLevel(type, level) {
-        let typeStr = type + '-' + level;
-        if (!this.contents[typeStr]) this.contents[typeStr] = 0;
-        this.contents[typeStr]--;
-        if (this.contents[typeStr] <= 0) delete this.contents[typeStr];
-    }
-
-    toJSON() {
-        return this.contents;
-    }
-}
-
 export let inventory = new Inventory();
-
-interface IDropOptions extends IUIOptions {
-    targetPos: number[];
-    value: number;
-}
-
-export let extraActors = []
-
-export class Drop extends UIElement {
-    age = 0;
-    directionVector: number[];
-
-    targetDirection: number[];
-    value;
-
-    layer = LAYERNUMBERS.item;
-
-    mag = 0;
-
-    constructor(opts: IDropOptions) {
-        super(opts);
-
-        this.width = 16;
-        this.height = 16;
-
-        this.directionVector = [1 - Math.random() * 2, -1 - Math.random()];
-
-        let dX = opts.targetPos[0] - this.left;
-        let dY = opts.targetPos[1] - this.top;
-
-        this.mag = Math.sqrt(dX ** 2 + dY ** 2)
-
-        this.targetDirection = [
-            dX / this.mag,
-            dY / this.mag
-        ]
-    }
-
-    update() {
-        this.age += fElapsedTime * 5;
-
-        if (this.age < 10) {
-            this.top += this.directionVector[1] * fElapsedTime * 5;
-        } else if (this.age < 20) {
-            this.top -= this.directionVector[1] * fElapsedTime * 5;
-        }
-
-        if (this.age < 20) {
-            this.left += this.directionVector[0] * fElapsedTime * 5;
-        } else {
-            this.left += this.targetDirection[0] * (this.mag / 3) * fElapsedTime;
-            this.top += this.targetDirection[1] * (this.mag / 3) * fElapsedTime;
-        }
-
-        if (this.left > camera.right || this.top > camera.bottom || this.left < camera.x || this.top < camera.y) this.removeNextDraw = true;
-    }
-
-    draw() {
-        let ctx = layers[this.layer].ctx;
-
-        ctx.drawImage(this.img, this.left, this.top, this.img.width, this.img.height);
-
-    }
-
-    destroy() {
-        extraActors.splice(extraActors.indexOf(this), 1);
-    }
-}
-
-export class XPDrop extends Drop {
-    sprite = sprites.xp;
-
-    destroy() {
-        super.destroy();
-        addXp(this.value);
-    }
-}
-
-export class Coin extends Drop {
-    sprite = sprites.coin;
-
-    destroy() {
-        super.destroy();
-        addCoins(this.value);
-    }
-}
-
-export class ItemDrop extends Drop {
-    level;
-
-    constructor(opts: IDropOptions & { level?: number | string, finish: () => void }) {
-        super(opts);
-
-        this.level = opts.level;
-    }
-
-    finish() {
-        // set callback in options
-        console.log('no callback for ', this)
-    }
-
-    destroy() {
-        super.destroy();
-        this.finish();
-    }
-}
 
 export let worldWidth = 50;
 
@@ -270,72 +136,6 @@ export const addXp = n => {
     saveGame();
 }
 
-class Tool {
-    img: Sprite;
-    uses: number = 0;
-    type: string;
-
-    act(x, y) {
-        if (this.uses <= 0) {
-            this.uses = 0;
-            tool = 'hand';
-            return false;
-        }
-        this.uses--;
-
-        saveGame();
-        return true;
-    }
-
-    addUses(n) {
-        this.uses += n;
-    }
-}
-
-class HandTool extends Tool {
-    type = 'hand';
-    uses = Infinity;
-
-    act(x, y) {
-        if (!super.act(x, y)) return false;
-        if (animalTouchListeners(x, y)) return true;
-        if (itemTouchListeners(x, y)) return true;
-        return false;
-    }
-}
-
-class AntiFog extends Tool {
-    type = 'antifog';
-    uses = 0;
-
-    act(x, y) {
-        // decrement uses
-        if (!super.act(x, y)) return false;
-        // if fog is at x,y
-        for (let gtile of tileGrid.flat()) {
-            let tile = gtile.tile;
-            // remove fog
-            if (tile.type != 'fog') continue;
-
-            // Account for scaling here
-            if (tile.collides(x, y)) {
-                tileGrid[tile.gridX][tile.gridY].tile = new Tile({
-                    gridPosition: { gridX: tile.gridX, gridY: tile.gridY },
-                    sprite: sprites.grass,
-                    droppable: true,
-                    type: 'grass',
-                });
-                return true;
-            }
-        }
-
-        // re-add use as we havent actually cleared
-        this.addUses(1);
-
-        return false;
-    }
-}
-
 export let tools = {
     antifog: new AntiFog,
     hand: new HandTool,
@@ -370,15 +170,6 @@ const levelUp = () => {
     // console.log('Reward screen not implemented!', levelManifest[lvl]);
 }
 
-export interface IActorOptions {
-    gridPosition: { gridX: number, gridY: number },
-    sprite: Sprite,
-    droppable?: boolean,
-    draggable?: boolean,
-    type: string,
-    level?: number
-}
-
 export let camera: Camera;
 
 export let sprites: { [x: string]: Sprite } = {};
@@ -390,9 +181,10 @@ interface IGridTile {
 
 export let tileGrid: IGridTile[][] = [];
 
-
-
 export let UIElements: any[] = [];
+
+export let animals: Animal[] = [];
+
 
 document.addEventListener('DOMContentLoaded', () => {
     loaded();
@@ -478,14 +270,8 @@ const loadSprites = () => {
     return Promise.allSettled(loadPromises);
 }
 
-const startLoop = () => {
-    loop = true;
-    requestAnimationFrame(mainLoop);
-    requestAnimationFrame(drawTiles);
-    requestAnimationFrame(drawItems);
-    requestAnimationFrame(updateItems);
-    requestAnimationFrame(updateTiles);
-}
+// br2 ========================== SAVELOAD =================================
+
 
 let saving;
 
@@ -544,6 +330,17 @@ const loadGame = () => {
             }
         }
     }
+}
+
+// br3 ========================== FLOW =================================
+
+const startLoop = () => {
+    loop = true;
+    requestAnimationFrame(mainLoop);
+    requestAnimationFrame(drawTiles);
+    requestAnimationFrame(drawItems);
+    requestAnimationFrame(updateItems);
+    requestAnimationFrame(updateTiles);
 }
 
 const addGameUI = () => {
@@ -610,11 +407,11 @@ export const startGame = () => {
     addGameUI();
 
     state = 'playing';
-    //@ts-ignore
+    //@ts-ignore yes typesctipt I can set the location directly fuck offffffff
     window.location = '#' + state;
 }
 
-window.addEventListener('popstate', e => {
+window.addEventListener('popstate', () => {
     if (state == location.hash.replace('#', '')) return;
     state = location.hash.replace('#', '');
 
@@ -634,7 +431,7 @@ const createMainMenu = () => {
     cleanupArrays();
     clearLayer('ui');
     state = 'mainmenu';
-    //@ts-ignore
+    //@ts-ignore yes typesctipt I can set the location directly fuck offffffff
     window.location = '#' + state;
 
     UIElements.push(new PlayButton({
@@ -726,17 +523,6 @@ const cleanupArrays = () => {
     }
 }
 
-const clearAllLayers = () => {
-    for (let l of layers) {
-        l.ctx.clearRect(0, 0, l.cnv.width, l.cnv.height);
-    }
-}
-
-export const clearLayer = l => {
-    if (typeof l == 'string') l = LAYERNUMBERS[l];
-    layers[l].ctx.clearRect(0, 0, layers[l].cnv.width, layers[l].cnv.height);
-}
-
 
 // new game
 const createNewGame = () => {
@@ -791,6 +577,8 @@ const createNewGame = () => {
     saveGame(true);
 }
 
+// br4 ================= DRAWING ================================
+
 let fps = 0;
 let lastT = 0;
 let frameTime = 0;
@@ -811,9 +599,12 @@ const avg = (arr) => {
     return rt / arr.length;
 }
 
-export let animals: Animal[] = [];
-
 let drawnObjs = 0;
+
+export const clearLayer = l => {
+    if (typeof l == 'string') l = LAYERNUMBERS[l];
+    layers[l].ctx.clearRect(0, 0, layers[l].cnv.width, layers[l].cnv.height);
+}
 
 const drawTiles = () => {
     if (camera.moved || frameCount % Math.floor(60 / TILE_FRAMERATE) == 0) {
@@ -910,6 +701,8 @@ const mainLoop = (t: DOMHighResTimeStamp) => {
     }
 }
 
+// br5 ================= INPUT ================================
+
 let keysHeld: { [key: string]: boolean } = {};
 
 document.addEventListener('keydown', e => {
@@ -969,8 +762,8 @@ export const pickup = (dragged, callback?) => {
         if (y > layers[0].cnv.height * 0.9 + camera.y) camera.move(0, 5);
         if (y < layers[0].cnv.height * 0.1 + camera.y) camera.move(0, -5);
 
-        dragged._x = (x*1/camera.scale) - dragged.width / 2 * camera.scale;
-        dragged._y = (y*1/camera.scale) - dragged.width / 2 * camera.scale;
+        dragged._x = (x * 1 / camera.scale) - dragged.width / 2 * camera.scale;
+        dragged._y = (y * 1 / camera.scale) - dragged.width / 2 * camera.scale;
 
         for (let gtile of tileGrid.flat()) {
             let tile = gtile.tile;
@@ -1044,7 +837,7 @@ export const pickup = (dragged, callback?) => {
     return true;
 }
 
-const itemTouchListeners = (x, y) => {
+export const itemTouchListeners = (x, y) => {
     for (let gtile of tileGrid.flat()) {
         let actor = gtile.contents;
 
@@ -1091,7 +884,7 @@ const uiTouchListeners = (x, y) => {
     return false;
 }
 
-const animalTouchListeners = (x, y) => {
+export const animalTouchListeners = (x, y) => {
     console.log('Animal touch listeners not implemented!');
     return false;
 }

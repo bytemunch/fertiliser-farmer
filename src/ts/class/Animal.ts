@@ -1,5 +1,5 @@
 import { WorldActor } from "./WorldActor.js";
-import { sprites, fElapsedTime, tileGrid, IActorOptions, saveGame, LAYERNUMBERS } from "../main.js";
+import { sprites, fElapsedTime, tileGrid, saveGame, LAYERNUMBERS } from "../main.js";
 import { Tile } from "./Tile.js";
 import { Item } from "./Item.js";
 
@@ -42,7 +42,7 @@ export class Animal extends WorldActor {
         }
     }
 
-    eat(foodSource) {
+    eat() {
         console.log('eating not implemented!')
     }
 
@@ -61,7 +61,7 @@ export class Animal extends WorldActor {
         }
     }
 
-    breed(otherAnimal) {
+    breed() {
         console.log('breeding not implemented!');
     }
 

@@ -1,5 +1,15 @@
 import { Sprite } from './Sprite.js';
-import { IActorOptions, DEBUG, camera, layers } from '../main.js';
+import { DEBUG, camera, layers } from '../main.js';
+
+export interface IActorOptions {
+    gridPosition: { gridX: number, gridY: number },
+    sprite: Sprite,
+    droppable?: boolean,
+    draggable?: boolean,
+    type: string,
+    level?: number
+}
+
 export abstract class WorldActor {
     _x: number | false;
     _y: number | false;
@@ -65,19 +75,19 @@ export abstract class WorldActor {
         return this._y;
     }
 
-    get ctx():CanvasRenderingContext2D {
+    get ctx(): CanvasRenderingContext2D {
         return layers[this.layer].ctx;
     }
 
-    get cnv():HTMLCanvasElement {
+    get cnv(): HTMLCanvasElement {
         return layers[this.layer].cnv;
     }
 
     draw() {
         if (this.visible) {
             try {
-            layers[this.layer].ctx.drawImage(this.img, Math.floor(this.x), Math.floor(this.y));
-            } catch(e) {
+                layers[this.layer].ctx.drawImage(this.img, Math.floor(this.x), Math.floor(this.y));
+            } catch (e) {
                 console.info(this.layer);
             }
             if (DEBUG.boundingBoxes) layers[this.layer].ctx.strokeRect(this.x, this.y, this.width, this.height);
@@ -93,6 +103,6 @@ export abstract class WorldActor {
     }
 
     collides(x, y) {
-        return (x > this.x * camera.scale && y > this.y * camera.scale && x < (this.x + this.width)*camera.scale && y < (this.y + this.height)*camera.scale);
+        return (x > this.x * camera.scale && y > this.y * camera.scale && x < (this.x + this.width) * camera.scale && y < (this.y + this.height) * camera.scale);
     }
 }

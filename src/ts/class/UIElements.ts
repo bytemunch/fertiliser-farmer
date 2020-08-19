@@ -1,6 +1,7 @@
-import { xpToCurrentLevel, xp, coins, startGame, inventory, UIElements, sprites, pickup, tileGrid, extraActors, levelManifest, xpBoundaryForLevel, ItemDrop, Coin, tool, tools, nextTool, layers, LAYERNUMBERS, clearLayer, camera } from "../main.js";
+import { xpToCurrentLevel, xp, coins, startGame, inventory, UIElements, sprites, pickup, tileGrid, extraActors, levelManifest, xpBoundaryForLevel, tool, tools, nextTool, layers, LAYERNUMBERS, clearLayer, camera } from "../main.js";
 import { Sprite } from "./Sprite.js";
 import { Item } from "./Item.js";
+import { Coin, ItemDrop } from "./Drop.js";
 
 const zIdxs = {
     screen: 10,

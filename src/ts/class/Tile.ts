@@ -1,5 +1,5 @@
-import { WorldActor } from './WorldActor.js';
-import { IActorOptions, tileGrid, sprites, layers, camera, LAYERNUMBERS } from '../main.js';
+import { WorldActor, IActorOptions } from './WorldActor.js';
+import { tileGrid, sprites, layers, camera, LAYERNUMBERS } from '../main.js';
 import { pointInPolygon } from '../functions/collision.js';
 
 export const newTileFromJSON = (data) => {

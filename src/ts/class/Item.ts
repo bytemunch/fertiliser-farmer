@@ -1,5 +1,6 @@
-import { WorldActor } from './WorldActor.js';
-import { IActorOptions, tileGrid, itemManifest, sprites, randInRange, camera, dropManifest, Coin, XPDrop, ItemDrop, inventory, layers, LAYERNUMBERS, extraActors } from '../main.js';
+import { WorldActor, IActorOptions } from './WorldActor.js';
+import { tileGrid, itemManifest, sprites, randInRange, camera, dropManifest, inventory, layers, LAYERNUMBERS, extraActors } from '../main.js';
+import { Coin, XPDrop, ItemDrop } from './Drop.js';
 
 export const newItemFromJSON = (data) => {
     return new Item({
