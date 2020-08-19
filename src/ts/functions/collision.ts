@@ -59,7 +59,6 @@ const intersecting = (
 }
 
 export const pointInPolygon = (polyPoints:number[][], testPoint:number[]) => {
-    // TODO broad phase filtering
     let minX = Math.min(...polyPoints.map(v=>v[0]));
     let minY = Math.min(...polyPoints.map(v=>v[1]));
 
@@ -69,6 +68,8 @@ export const pointInPolygon = (polyPoints:number[][], testPoint:number[]) => {
     let rayEnd = testPoint;
 
     let dist = Math.sqrt(((rayStart[0]-rayEnd[0])**2 + (rayStart[1]-rayEnd[1])**2));
+
+    // Broad phase
     if (dist > 100) return false;
 
     // Test intersections with lines

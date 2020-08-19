@@ -316,6 +316,8 @@ class AntiFog extends Tool {
             let tile = gtile.tile;
             // remove fog
             if (tile.type != 'fog') continue;
+
+            // Account for scaling here
             if (tile.collides(x, y)) {
                 tileGrid[tile.gridX][tile.gridY].tile = new Tile({
                     gridPosition: { gridX: tile.gridX, gridY: tile.gridY },
@@ -967,11 +969,8 @@ export const pickup = (dragged, callback?) => {
         if (y > layers[0].cnv.height * 0.9 + camera.y) camera.move(0, 5);
         if (y < layers[0].cnv.height * 0.1 + camera.y) camera.move(0, -5);
 
-        x *= 1 / camera.scale;
-        y *= 1 / camera.scale;
-
-        dragged._x = x - dragged.width / 2 * camera.scale;
-        dragged._y = y - dragged.width / 2 * camera.scale;
+        dragged._x = (x*1/camera.scale) - dragged.width / 2 * camera.scale;
+        dragged._y = (y*1/camera.scale) - dragged.width / 2 * camera.scale;
 
         for (let gtile of tileGrid.flat()) {
             let tile = gtile.tile;
@@ -984,7 +983,6 @@ export const pickup = (dragged, callback?) => {
             }
         }
     };
-
 
     const endHandler = e => {
         e.preventDefault();

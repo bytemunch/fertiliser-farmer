@@ -83,6 +83,8 @@ export class Tile extends WorldActor {
     }
 
     collides(x, y) {
+        x *= 1 / camera.scale;
+        y *= 1 / camera.scale;
         return pointInPolygon(this.points, [x, y]);
     }
 }
