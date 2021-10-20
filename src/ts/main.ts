@@ -667,14 +667,15 @@ const drawDebug = () => {
     ctx.fillText('rev' + version, layers[0].cnv.width - 120, layers[0].cnv.height - 4);
     ctx.fillText(`[${((camera.x + camera.viewWidth / 2) - 32).toPrecision(4)},${((camera.y + camera.viewHeight / 2) - 48).toPrecision(4)}]`, layers[0].cnv.width / 2, layers[0].cnv.height - 4);
     ctx.fillText(`{${drawnObjs}:${UIElements.length}}`, 128, layers[0].cnv.height - 4);
+    ctx.fillText(`Touchscreen Only`, 300, layers[0].cnv.height - 4);
     // Crosshair
-    ctx.beginPath();
-    ctx.moveTo(layers[0].cnv.width / 2, 0);
-    ctx.lineTo(layers[0].cnv.width / 2, layers[0].cnv.height - 20);
-    ctx.moveTo(0, layers[0].cnv.height / 2);
-    ctx.lineTo(layers[0].cnv.width, layers[0].cnv.height / 2);
-    ctx.stroke();
-    ctx.closePath();
+    // ctx.beginPath();
+    // ctx.moveTo(layers[0].cnv.width / 2, 0);
+    // ctx.lineTo(layers[0].cnv.width / 2, layers[0].cnv.height - 20);
+    // ctx.moveTo(0, layers[0].cnv.height / 2);
+    // ctx.lineTo(layers[0].cnv.width, layers[0].cnv.height / 2);
+    // ctx.stroke();
+    // ctx.closePath();
 }
 
 const mainLoop = (t: DOMHighResTimeStamp) => {
